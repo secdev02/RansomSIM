@@ -1,0 +1,1441 @@
+
+I am buildling a Ransomware Model simulation to help organizations identify gaps and coverage.
+I want to be able to model 
+PCs, laptops, devices (TV, ConferencRoom AV)  , edge equipment, servers, subnets
+I need to model lateral movement via 
+Stolen Credentials (Admin, Service Accounts)
+WMI
+SMB
+WinRM
+RMM
+HTTP
+HyperV
+
+Create a visualization for me that lets me 
+1. Generate various Network Designs and constraints
+2. Lets me save and import designs
+3. Lets me test / enable / disable various weaknesses and test mitigations
+Keep it a Single Page App (JS, CSS, HTML)
+Google, Simple Style 
+No Documentation
+Keep it conscise and let me load up to 10000 objects in the model
+
+Show more
+4:08 PM
+
+Reading frontend design skill
+Reading frontend design skill
+This is a complex, data-heavy security simulation tool — I'll go for a clean, utilitarian/industrial aesthetic that feels purpose-built: dark theme, monospaced accents, dense-but-scannable layout. Google Material-inspired but with more edge.
+
+
+Created a file, read a file
+Created a file, read a file
+Here's your RansomSim app. Here's a quick orientation:
+
+Generate — Use the left panel to configure node counts (up to 10,000 total), pick a layout, or hit one of the presets (SMB Corp, Hospital, Campus, Data Center, Factory OT) then click ⚡ Generate.
+
+Simulate — Hit ▶ Run Sim. It picks a random patient zero (or right-click any node → Set as Patient Zero). The engine propagates infection tick by tick across enabled attack vectors, respecting mitigations. The log shows every hop and encryption event.
+
+Vectors & Mitigations — Toggle each vector on/off (SMB, WMI, WinRM, RMM, HTTP, HyperV Escape, Stolen Creds) and flip mitigations (MFA, EDR, Segmentation, PAM, SMB Signing, etc.) mid-simulation to test coverage gaps in real time.
+
+Node Inspector — Click any node to see its status, connections, active infection paths, and act on it (isolate, add stolen creds, mark vulnerable, etc.).
+
+Export/Import — Full JSON round-trip via the Export/Import buttons so you can save and share designs.
+
+Key interactions:
+
+Right-click any node for the context menu
+Scroll to zoom, drag to move nodes, use Pan tool for camera movement
+Adjust simulation speed with the slider (1x–10x)
+Ransomware sim
+Code · HTML 
+Keep an exportable log
+Show which mitigations worked. 
+For example add Decoys (Deception System for alerting)
+Allow Replay
+
+4:17 PM
+
+Reading the existing ransomware sim file
+Reading the existing ransomware sim file
+Good — I have the full file. Now I'll rebuild it with all four new features woven in cleanly: structured exportable log, mitigation effectiveness tracking, decoy/honeypot nodes, and full replay system.
+
+
+Ransomware sim v2 with exportable log, mitigation analytics, decoys, and replay
+Ransomware sim v2 with exportable log, mitigation analytics, decoys, and replay
+
+
+
+
+Claude is AI and can make mistakes. Please double-check responses.
+Ransomware sim · HTML
+Copy
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RansomSim — Network Attack Modeler</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+ 
+  :root {
+    --bg: #0d1117; --bg2: #161b22; --bg3: #21262d; --bg4: #30363d;
+    --border: #30363d; --border2: #484f58;
+    --text: #e6edf3; --text2: #8b949e; --text3: #6e7681;
+    --red: #f85149; --orange: #d29922; --green: #3fb950; --blue: #58a6ff;
+    --purple: #bc8cff; --cyan: #39d353;
+    --accent: #1f6feb; --accent2: #388bfd;
+    --infected: #f85149; --safe: #3fb950; --vulnerable: #d29922; --unknown: #8b949e;
+    --font-mono: 'IBM Plex Mono', monospace;
+    --font-sans: 'IBM Plex Sans', sans-serif;
+  }
+ 
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+ 
+  body {
+    font-family: var(--font-sans);
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    font-size: 13px;
+  }
+ 
+  /* ─── TOP BAR ─── */
+  #topbar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 0 16px; height: 44px;
+    background: var(--bg2); border-bottom: 1px solid var(--border);
+    flex-shrink: 0; z-index: 100;
+  }
+  #topbar .logo {
+    font-family: var(--font-mono); font-size: 14px; font-weight: 600;
+    color: var(--red); letter-spacing: 1px; margin-right: 8px;
+  }
+  #topbar .logo span { color: var(--text2); }
+  .tab-group { display: flex; gap: 2px; }
+  .tab {
+    padding: 5px 14px; border-radius: 4px; cursor: pointer;
+    font-size: 12px; font-weight: 500; color: var(--text2);
+    transition: all .15s; border: none; background: none;
+  }
+  .tab:hover { background: var(--bg3); color: var(--text); }
+  .tab.active { background: var(--accent); color: #fff; }
+  .spacer { flex: 1; }
+  .stat-pill {
+    display: flex; align-items: center; gap: 5px;
+    padding: 3px 10px; border-radius: 12px;
+    background: var(--bg3); border: 1px solid var(--border);
+    font-family: var(--font-mono); font-size: 11px;
+  }
+  .stat-pill .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .dot-red { background: var(--red); }
+  .dot-green { background: var(--green); }
+  .dot-orange { background: var(--orange); }
+  .dot-blue { background: var(--blue); }
+  #btn-run {
+    padding: 5px 16px; border-radius: 4px; cursor: pointer;
+    font-size: 12px; font-weight: 600; border: none;
+    background: var(--red); color: #fff; transition: all .15s;
+    font-family: var(--font-sans);
+  }
+  #btn-run:hover { background: #ff6b6b; }
+  #btn-run.running { background: var(--orange); }
+  #btn-reset {
+    padding: 5px 12px; border-radius: 4px; cursor: pointer;
+    font-size: 12px; font-weight: 500; border: 1px solid var(--border2);
+    background: none; color: var(--text2); transition: all .15s;
+    font-family: var(--font-sans);
+  }
+  #btn-reset:hover { background: var(--bg3); color: var(--text); }
+ 
+  /* ─── MAIN LAYOUT ─── */
+  #main { display: flex; flex: 1; overflow: hidden; }
+ 
+  /* ─── LEFT PANEL ─── */
+  #left-panel {
+    width: 260px; flex-shrink: 0;
+    background: var(--bg2); border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .panel-section { border-bottom: 1px solid var(--border); }
+  .panel-title {
+    padding: 8px 12px; font-size: 10px; font-weight: 600;
+    color: var(--text3); text-transform: uppercase; letter-spacing: 1px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .panel-body { padding: 8px 12px; }
+ 
+  /* Generator */
+  .gen-row { display: flex; gap: 6px; margin-bottom: 6px; align-items: center; }
+  .gen-row label { font-size: 11px; color: var(--text2); width: 90px; flex-shrink: 0; }
+  .gen-row input[type=number], .gen-row select {
+    flex: 1; background: var(--bg3); border: 1px solid var(--border);
+    color: var(--text); border-radius: 4px; padding: 3px 7px;
+    font-family: var(--font-mono); font-size: 11px;
+  }
+  .gen-row input[type=number]:focus, .gen-row select:focus { outline: none; border-color: var(--accent2); }
+  .gen-presets { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 8px; }
+  .preset-btn {
+    padding: 3px 8px; border-radius: 3px; cursor: pointer;
+    font-size: 11px; border: 1px solid var(--border2);
+    background: var(--bg3); color: var(--text2); transition: all .12s;
+  }
+  .preset-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn-primary {
+    width: 100%; padding: 6px; border-radius: 4px; cursor: pointer;
+    font-size: 12px; font-weight: 500; border: none;
+    background: var(--accent); color: #fff; transition: all .15s;
+    font-family: var(--font-sans); margin-top: 4px;
+  }
+  .btn-primary:hover { background: var(--accent2); }
+  .btn-secondary {
+    flex: 1; padding: 5px; border-radius: 4px; cursor: pointer;
+    font-size: 11px; font-weight: 500;
+    border: 1px solid var(--border2);
+    background: none; color: var(--text2); transition: all .15s;
+    font-family: var(--font-sans);
+  }
+  .btn-secondary:hover { background: var(--bg3); color: var(--text); }
+ 
+  /* Attack vectors */
+  .vector-list { display: flex; flex-direction: column; gap: 2px; padding: 4px 0; }
+  .vector-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 4px 6px; border-radius: 4px; cursor: pointer;
+    transition: background .1s;
+  }
+  .vector-item:hover { background: var(--bg3); }
+  .vector-toggle {
+    width: 28px; height: 14px; border-radius: 7px; position: relative;
+    background: var(--bg4); border: none; cursor: pointer; flex-shrink: 0;
+    transition: background .2s;
+  }
+  .vector-toggle::after {
+    content: ''; position: absolute; top: 2px; left: 2px;
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--text3); transition: all .2s;
+  }
+  .vector-toggle.on { background: var(--green); }
+  .vector-toggle.on::after { left: 16px; background: #fff; }
+  .vector-name { font-size: 11px; color: var(--text2); flex: 1; }
+  .vector-severity {
+    font-family: var(--font-mono); font-size: 9px; padding: 1px 5px;
+    border-radius: 3px; font-weight: 600;
+  }
+  .sev-critical { background: rgba(248,81,73,.2); color: var(--red); }
+  .sev-high { background: rgba(210,153,34,.2); color: var(--orange); }
+  .sev-medium { background: rgba(88,166,255,.2); color: var(--blue); }
+ 
+  /* Mitigations */
+  .mitig-list { display: flex; flex-direction: column; gap: 2px; padding: 4px 0; }
+  .mitig-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 4px 6px; border-radius: 4px;
+  }
+  .mitig-item label { font-size: 11px; color: var(--text2); flex: 1; cursor: pointer; }
+  .mitig-item input[type=checkbox] { accent-color: var(--green); cursor: pointer; }
+  .mitig-item.active label { color: var(--green); }
+ 
+  /* Object list */
+  #obj-list {
+    flex: 1; overflow-y: auto; padding: 4px 8px;
+  }
+  #obj-list::-webkit-scrollbar { width: 4px; }
+  #obj-list::-webkit-scrollbar-track { background: transparent; }
+  #obj-list::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 2px; }
+  .obj-item {
+    display: flex; align-items: center; gap: 6px;
+    padding: 3px 4px; border-radius: 3px; cursor: pointer;
+    font-size: 11px; transition: background .1s;
+  }
+  .obj-item:hover { background: var(--bg3); }
+  .obj-item.selected { background: rgba(31,111,235,.25); }
+  .obj-icon { font-size: 12px; width: 16px; text-align: center; flex-shrink: 0; }
+  .obj-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text2); }
+  .obj-status { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+ 
+  /* ─── CANVAS AREA ─── */
+  #canvas-area {
+    flex: 1; position: relative; overflow: hidden; background: var(--bg);
+  }
+  #canvas-bg {
+    position: absolute; inset: 0; pointer-events: none;
+    background-image:
+      linear-gradient(rgba(48,54,61,.4) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(48,54,61,.4) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+  #netcanvas {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    cursor: grab;
+  }
+  #netcanvas.grabbing { cursor: grabbing; }
+ 
+  /* ─── RIGHT PANEL ─── */
+  #right-panel {
+    width: 280px; flex-shrink: 0;
+    background: var(--bg2); border-left: 1px solid var(--border);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+ 
+  /* Detail panel */
+  #detail-panel { flex: 1; overflow-y: auto; }
+  #detail-panel::-webkit-scrollbar { width: 4px; }
+  #detail-panel::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 2px; }
+  .detail-empty {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; height: 100%; color: var(--text3);
+    font-size: 12px; gap: 8px;
+  }
+  .detail-empty .icon { font-size: 32px; opacity: .3; }
+  .detail-header {
+    padding: 12px 14px; border-bottom: 1px solid var(--border);
+  }
+  .detail-title { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+  .detail-sub { font-size: 11px; color: var(--text2); font-family: var(--font-mono); }
+  .detail-section { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .detail-section-title {
+    font-size: 10px; text-transform: uppercase; letter-spacing: .8px;
+    color: var(--text3); font-weight: 600; margin-bottom: 6px;
+  }
+  .kv-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+  .kv-key { font-size: 11px; color: var(--text2); }
+  .kv-val { font-size: 11px; font-family: var(--font-mono); color: var(--text); }
+  .tag-list { display: flex; flex-wrap: wrap; gap: 4px; }
+  .tag {
+    padding: 2px 7px; border-radius: 3px; font-size: 10px;
+    font-family: var(--font-mono); font-weight: 600;
+  }
+  .tag-red { background: rgba(248,81,73,.15); color: var(--red); border: 1px solid rgba(248,81,73,.3); }
+  .tag-orange { background: rgba(210,153,34,.15); color: var(--orange); border: 1px solid rgba(210,153,34,.3); }
+  .tag-green { background: rgba(63,185,80,.15); color: var(--green); border: 1px solid rgba(63,185,80,.3); }
+  .tag-blue { background: rgba(88,166,255,.15); color: var(--blue); border: 1px solid rgba(88,166,255,.3); }
+  .tag-gray { background: var(--bg3); color: var(--text2); border: 1px solid var(--border); }
+ 
+  /* Sim log */
+  #sim-log {
+    height: 180px; border-top: 1px solid var(--border);
+    display: flex; flex-direction: column; flex-shrink: 0;
+  }
+  #log-entries {
+    flex: 1; overflow-y: auto; padding: 4px 10px;
+    font-family: var(--font-mono); font-size: 10px;
+  }
+  #log-entries::-webkit-scrollbar { width: 3px; }
+  #log-entries::-webkit-scrollbar-thumb { background: var(--bg4); }
+  .log-entry { padding: 2px 0; display: flex; gap: 8px; }
+  .log-time { color: var(--text3); flex-shrink: 0; }
+  .log-msg { }
+  .log-info { color: var(--text2); }
+  .log-warn { color: var(--orange); }
+  .log-crit { color: var(--red); }
+  .log-ok { color: var(--green); }
+ 
+  /* Speed control */
+  #speed-row {
+    display: flex; align-items: center; gap: 8px; padding: 6px 12px;
+    border-top: 1px solid var(--border);
+    background: var(--bg2); flex-shrink: 0;
+  }
+  #speed-row label { font-size: 10px; color: var(--text3); }
+  #speed-row input[type=range] { flex: 1; accent-color: var(--accent); height: 4px; }
+  #speed-val { font-family: var(--font-mono); font-size: 10px; color: var(--text2); width: 30px; }
+ 
+  /* Canvas toolbar */
+  #canvas-toolbar {
+    position: absolute; top: 10px; left: 10px; z-index: 10;
+    display: flex; gap: 4px;
+  }
+  .ctool-btn {
+    padding: 5px 10px; border-radius: 4px; cursor: pointer;
+    font-size: 11px; border: 1px solid var(--border);
+    background: var(--bg2); color: var(--text2); transition: all .15s;
+    font-family: var(--font-sans);
+  }
+  .ctool-btn:hover { background: var(--bg3); color: var(--text); }
+  .ctool-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+ 
+  /* Node labels on canvas */
+  .node-label { pointer-events: none; }
+ 
+  /* Context menu */
+  #ctx-menu {
+    position: fixed; z-index: 9999;
+    background: var(--bg2); border: 1px solid var(--border2);
+    border-radius: 6px; padding: 4px; min-width: 160px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.6);
+    display: none;
+  }
+  .ctx-item {
+    padding: 6px 12px; font-size: 12px; color: var(--text2);
+    cursor: pointer; border-radius: 3px; transition: background .1s;
+  }
+  .ctx-item:hover { background: var(--bg3); color: var(--text); }
+  .ctx-sep { height: 1px; background: var(--border); margin: 3px 0; }
+  .ctx-item.danger { color: var(--red); }
+  .ctx-item.danger:hover { background: rgba(248,81,73,.1); }
+ 
+  /* Import/Export modal */
+  #modal-overlay {
+    display: none; position: fixed; inset: 0; z-index: 500;
+    background: rgba(0,0,0,.7); align-items: center; justify-content: center;
+  }
+  #modal-overlay.open { display: flex; }
+  #modal {
+    background: var(--bg2); border: 1px solid var(--border2);
+    border-radius: 8px; padding: 20px; width: 480px; max-height: 80vh;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  #modal h3 { font-size: 14px; font-weight: 600; }
+  #modal textarea {
+    flex: 1; min-height: 200px; background: var(--bg);
+    border: 1px solid var(--border); color: var(--text);
+    border-radius: 4px; padding: 10px; font-family: var(--font-mono); font-size: 11px;
+    resize: vertical;
+  }
+  .modal-btns { display: flex; gap: 8px; }
+ 
+  /* Infection glow animation */
+  @keyframes pulse-red { 0%,100%{opacity:1}50%{opacity:.4} }
+  @keyframes spread { 0%{r:6}50%{r:12}100%{r:6} }
+</style>
+</head>
+<body>
+ 
+<!-- TOP BAR -->
+<div id="topbar">
+  <div class="logo">RANSOM<span>SIM</span></div>
+  <div class="tab-group">
+    <button class="tab active" onclick="setTab('design')">Design</button>
+    <button class="tab" onclick="setTab('simulate')">Simulate</button>
+    <button class="tab" onclick="setTab('objects')">Objects</button>
+  </div>
+  <div class="spacer"></div>
+  <div class="stat-pill"><div class="dot dot-blue"></div><span id="stat-total">0</span> nodes</div>
+  <div class="stat-pill"><div class="dot dot-green"></div><span id="stat-safe">0</span> safe</div>
+  <div class="stat-pill"><div class="dot dot-red"></div><span id="stat-inf">0</span> infected</div>
+  <div class="stat-pill"><div class="dot dot-orange"></div><span id="stat-vuln">0</span> vulnerable</div>
+  <button id="btn-reset" onclick="resetSim()">↺ Reset</button>
+  <button id="btn-run" onclick="toggleSim()">▶ Run Sim</button>
+</div>
+ 
+<!-- MAIN -->
+<div id="main">
+ 
+  <!-- LEFT -->
+  <div id="left-panel">
+ 
+    <!-- DESIGN TAB -->
+    <div id="tab-design">
+      <div class="panel-section">
+        <div class="panel-title">Network Generator</div>
+        <div class="panel-body">
+          <div class="gen-presets">
+            <button class="preset-btn" onclick="applyPreset('smb')">SMB Corp</button>
+            <button class="preset-btn" onclick="applyPreset('hospital')">Hospital</button>
+            <button class="preset-btn" onclick="applyPreset('campus')">Campus</button>
+            <button class="preset-btn" onclick="applyPreset('datacenter')">Data Center</button>
+            <button class="preset-btn" onclick="applyPreset('factory')">Factory OT</button>
+          </div>
+          <div class="gen-row"><label>Workstations</label><input type="number" id="g-ws" value="20" min="0" max="5000"></div>
+          <div class="gen-row"><label>Laptops</label><input type="number" id="g-lp" value="10" min="0" max="5000"></div>
+          <div class="gen-row"><label>Servers</label><input type="number" id="g-sv" value="5" min="0" max="1000"></div>
+          <div class="gen-row"><label>Edge Devices</label><input type="number" id="g-ed" value="4" min="0" max="500"></div>
+          <div class="gen-row"><label>IoT/AV/TV</label><input type="number" id="g-iot" value="6" min="0" max="500"></div>
+          <div class="gen-row"><label>Subnets</label><input type="number" id="g-sub" value="3" min="1" max="50"></div>
+          <div class="gen-row"><label>HyperV Hosts</label><input type="number" id="g-hv" value="2" min="0" max="100"></div>
+          <div class="gen-row"><label>Layout</label>
+            <select id="g-layout">
+              <option value="hierarchical">Hierarchical</option>
+              <option value="clustered">Clustered</option>
+              <option value="random">Random</option>
+              <option value="ring">Ring</option>
+            </select>
+          </div>
+          <button class="btn-primary" onclick="generateNetwork()">⚡ Generate</button>
+          <div style="display:flex;gap:6px;margin-top:6px;">
+            <button class="btn-secondary" onclick="openExport()">Export</button>
+            <button class="btn-secondary" onclick="openImport()">Import</button>
+          </div>
+        </div>
+      </div>
+ 
+      <div class="panel-section">
+        <div class="panel-title">Attack Vectors</div>
+        <div class="vector-list" id="vector-list"></div>
+      </div>
+ 
+      <div class="panel-section">
+        <div class="panel-title">Mitigations</div>
+        <div class="mitig-list" id="mitig-list"></div>
+      </div>
+    </div>
+ 
+    <!-- OBJECTS TAB (hidden by default) -->
+    <div id="tab-objects" style="display:none; flex:1; flex-direction:column; overflow:hidden;">
+      <div style="padding:6px 8px; border-bottom:1px solid var(--border);">
+        <input id="obj-search" placeholder="Filter objects…" style="width:100%; background:var(--bg3); border:1px solid var(--border); color:var(--text); border-radius:4px; padding:4px 8px; font-size:11px; font-family:var(--font-sans);" oninput="filterObjects(this.value)">
+      </div>
+      <div id="obj-list"></div>
+    </div>
+ 
+  </div>
+ 
+  <!-- CANVAS -->
+  <div id="canvas-area">
+    <div id="canvas-bg"></div>
+    <div id="canvas-toolbar">
+      <button class="ctool-btn" id="tool-select" onclick="setTool('select')">⬡ Select</button>
+      <button class="ctool-btn" id="tool-pan" onclick="setTool('pan')">✥ Pan</button>
+      <button class="ctool-btn" onclick="fitView()">⊡ Fit</button>
+      <button class="ctool-btn" onclick="zoomIn()">+</button>
+      <button class="ctool-btn" onclick="zoomOut()">−</button>
+    </div>
+    <canvas id="netcanvas"></canvas>
+  </div>
+ 
+  <!-- RIGHT -->
+  <div id="right-panel">
+    <div class="panel-title" style="padding:10px 14px;">Node Inspector</div>
+    <div id="detail-panel">
+      <div class="detail-empty">
+        <div class="icon">⬡</div>
+        <div>Select a node to inspect</div>
+      </div>
+    </div>
+    <div id="sim-log">
+      <div class="panel-title" style="padding:6px 12px;">
+        Simulation Log
+        <button class="btn-secondary" style="padding:2px 8px;font-size:10px;" onclick="clearLog()">Clear</button>
+      </div>
+      <div id="log-entries"></div>
+    </div>
+    <div id="speed-row">
+      <label>Speed</label>
+      <input type="range" id="sim-speed" min="1" max="10" value="5" oninput="document.getElementById('speed-val').textContent=this.value+'x'">
+      <div id="speed-val">5x</div>
+    </div>
+  </div>
+</div>
+ 
+<!-- CONTEXT MENU -->
+<div id="ctx-menu">
+  <div class="ctx-item" onclick="ctxSetPatient()">☠ Set as Patient Zero</div>
+  <div class="ctx-item" onclick="ctxToggleVuln()">⚠ Toggle Vulnerable</div>
+  <div class="ctx-item" onclick="ctxIsolate()">⛔ Isolate Node</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" onclick="ctxAddCreds()">🔑 Add Stolen Creds</div>
+  <div class="ctx-item" onclick="ctxAddAdmin()">👑 Mark as Admin</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item danger" onclick="ctxDelete()">✕ Delete Node</div>
+</div>
+ 
+<!-- MODAL -->
+<div id="modal-overlay">
+  <div id="modal">
+    <h3 id="modal-title">Export Design</h3>
+    <textarea id="modal-data" spellcheck="false"></textarea>
+    <div class="modal-btns">
+      <button class="btn-primary" id="modal-action-btn" style="flex:1;margin-top:0;" onclick="modalAction()">Copy</button>
+      <button class="btn-secondary" onclick="closeModal()">Close</button>
+    </div>
+  </div>
+</div>
+ 
+<script>
+// ════════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════════
+const state = {
+  nodes: [],      // {id, type, label, x, y, subnet, status, roles, vulns, infected, isolated}
+  edges: [],      // {src, dst, protocol}
+  subnets: [],    // {id, name, color, cx, cy, r}
+  selected: null,
+  simRunning: false,
+  simTimer: null,
+  simTick: 0,
+  tool: 'select',
+  // camera
+  camX: 0, camY: 0, camZ: 1,
+  // drag
+  dragging: false, dragNode: null,
+  dragStartX: 0, dragStartY: 0, nodeDragOX: 0, nodeDragOY: 0,
+  // pan
+  panning: false, panStartX: 0, panStartY: 0, panCamX: 0, panCamY: 0,
+};
+ 
+const VECTORS = [
+  { id:'creds',    name:'Stolen Creds',    sev:'critical', on:true },
+  { id:'smb',      name:'SMB',             sev:'critical', on:true },
+  { id:'wmi',      name:'WMI',             sev:'high',     on:true },
+  { id:'winrm',    name:'WinRM',           sev:'high',     on:false },
+  { id:'rmm',      name:'RMM',             sev:'high',     on:true },
+  { id:'http',     name:'HTTP/Web',        name2:'HTTP',   sev:'medium', on:false },
+  { id:'hyperv',   name:'HyperV Escape',   sev:'critical', on:false },
+];
+ 
+const MITIGATIONS = [
+  { id:'mfa',        label:'MFA Enforced',          on:false },
+  { id:'edr',        label:'EDR/AV Active',          on:false },
+  { id:'segmented',  label:'Network Segmentation',   on:false },
+  { id:'pam',        label:'PAM / Least Privilege',  on:false },
+  { id:'wmi-off',    label:'WMI Disabled',           on:false },
+  { id:'winrm-off',  label:'WinRM Disabled',         on:false },
+  { id:'smb-sign',   label:'SMB Signing Required',   on:false },
+  { id:'rmm-ctrl',   label:'RMM Access Control',     on:false },
+  { id:'backup',     label:'Immutable Backups',      on:false },
+];
+ 
+const NODE_TYPES = {
+  workstation: { icon:'💻', color:'#58a6ff' },
+  laptop:      { icon:'🖥️', color:'#bc8cff' },
+  server:      { icon:'🗄️', color:'#3fb950' },
+  dc:          { icon:'🏛️', color:'#d29922' },
+  edge:        { icon:'🌐', color:'#39d353' },
+  iot:         { icon:'📺', color:'#8b949e' },
+  hyperv:      { icon:'⬡',  color:'#58a6ff' },
+  vm:          { icon:'□',  color:'#388bfd' },
+};
+ 
+const SUBNET_COLORS = ['rgba(88,166,255,.06)','rgba(63,185,80,.06)','rgba(210,153,34,.06)',
+  'rgba(188,140,255,.06)','rgba(57,211,83,.06)','rgba(248,81,73,.06)'];
+ 
+let nodeIdSeq = 0;
+let edgeIdSeq = 0;
+let contextNode = null;
+let modalMode = 'export';
+ 
+// ════════════════════════════════════════════════════════
+//  CANVAS SETUP
+// ════════════════════════════════════════════════════════
+const canvas = document.getElementById('netcanvas');
+const ctx = canvas.getContext('2d');
+ 
+function resize() {
+  const area = document.getElementById('canvas-area');
+  canvas.width = area.offsetWidth;
+  canvas.height = area.offsetHeight;
+  draw();
+}
+window.addEventListener('resize', resize);
+ 
+// ════════════════════════════════════════════════════════
+//  COORD TRANSFORMS
+// ════════════════════════════════════════════════════════
+function worldToScreen(wx, wy) {
+  return { x: wx * state.camZ + state.camX, y: wy * state.camZ + state.camY };
+}
+function screenToWorld(sx, sy) {
+  return { x: (sx - state.camX) / state.camZ, y: (sy - state.camY) / state.camZ };
+}
+ 
+// ════════════════════════════════════════════════════════
+//  DRAW
+// ════════════════════════════════════════════════════════
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.save();
+  ctx.translate(state.camX, state.camY);
+  ctx.scale(state.camZ, state.camZ);
+ 
+  // subnets
+  for (const sn of state.subnets) {
+    ctx.beginPath();
+    ctx.ellipse(sn.cx, sn.cy, sn.rx, sn.ry, 0, 0, Math.PI * 2);
+    ctx.fillStyle = sn.color;
+    ctx.fill();
+    ctx.strokeStyle = sn.borderColor || 'rgba(255,255,255,.06)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6, 4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(255,255,255,.15)';
+    ctx.font = '500 11px "IBM Plex Sans"';
+    ctx.fillText(sn.name, sn.cx - sn.name.length * 3, sn.cy - sn.ry + 16);
+  }
+ 
+  // edges
+  for (const e of state.edges) {
+    const src = state.nodes.find(n => n.id === e.src);
+    const dst = state.nodes.find(n => n.id === e.dst);
+    if (!src || !dst) continue;
+    const isActive = e.active;
+    ctx.beginPath();
+    ctx.moveTo(src.x, src.y);
+    ctx.lineTo(dst.x, dst.y);
+    ctx.strokeStyle = isActive ? 'rgba(248,81,73,.8)' : 'rgba(72,79,88,.5)';
+    ctx.lineWidth = isActive ? 2 : 1;
+    if (!isActive) ctx.setLineDash([3, 5]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+ 
+  // nodes
+  const r = Math.max(5, Math.min(12, 10 / state.camZ * 0.6 + 4));
+  for (const node of state.nodes) {
+    const s = worldToScreen(node.x, node.y);
+    const sx = node.x, sy = node.y;
+ 
+    // glow for infected
+    if (node.infected) {
+      const glowR = r + 8 + Math.sin(Date.now() / 300 + node.id * 0.7) * 3;
+      const grd = ctx.createRadialGradient(sx, sy, r, sx, sy, glowR);
+      grd.addColorStop(0, 'rgba(248,81,73,.4)');
+      grd.addColorStop(1, 'rgba(248,81,73,0)');
+      ctx.beginPath();
+      ctx.arc(sx, sy, glowR, 0, Math.PI * 2);
+      ctx.fillStyle = grd;
+      ctx.fill();
+    }
+ 
+    // ring for isolated
+    if (node.isolated) {
+      ctx.beginPath();
+      ctx.arc(sx, sy, r + 5, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(88,166,255,.5)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([2,3]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+ 
+    // node body
+    ctx.beginPath();
+    ctx.arc(sx, sy, r, 0, Math.PI * 2);
+    let fill;
+    if (node.infected) fill = '#f85149';
+    else if (node.isolated) fill = '#30363d';
+    else if (node.status === 'vulnerable') fill = '#d29922';
+    else fill = NODE_TYPES[node.type]?.color || '#8b949e';
+    ctx.fillStyle = fill;
+    ctx.fill();
+    ctx.strokeStyle = state.selected === node.id ? '#fff' : 'rgba(0,0,0,.4)';
+    ctx.lineWidth = state.selected === node.id ? 2 : 1;
+    ctx.stroke();
+ 
+    // label (only when not too zoomed out)
+    if (state.camZ > 0.35) {
+      ctx.fillStyle = 'rgba(230,237,243,.7)';
+      ctx.font = '9px "IBM Plex Mono"';
+      ctx.textAlign = 'center';
+      ctx.fillText(node.label.substring(0, 14), sx, sy + r + 10);
+      ctx.textAlign = 'left';
+    }
+ 
+    // creds indicator
+    if (node.hasCreds) {
+      ctx.fillStyle = '#d29922';
+      ctx.font = '9px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('🔑', sx + r - 1, sy - r + 3);
+      ctx.textAlign = 'left';
+    }
+  }
+ 
+  ctx.restore();
+}
+ 
+function animLoop() { if (state.simRunning || state.nodes.some(n => n.infected)) { draw(); } requestAnimationFrame(animLoop); }
+animLoop();
+ 
+// ════════════════════════════════════════════════════════
+//  GENERATE NETWORK
+// ════════════════════════════════════════════════════════
+const presets = {
+  smb:        { ws:30, lp:15, sv:6,  ed:3,  iot:4, sub:2, hv:1 },
+  hospital:   { ws:80, lp:40, sv:12, ed:8,  iot:20, sub:5, hv:3 },
+  campus:     { ws:200, lp:100, sv:20, ed:10, iot:30, sub:8, hv:4 },
+  datacenter: { ws:10, lp:5, sv:50, ed:6, iot:2, sub:4, hv:8 },
+  factory:    { ws:20, lp:10, sv:8, ed:15, iot:40, sub:4, hv:2 },
+};
+ 
+function applyPreset(name) {
+  const p = presets[name];
+  document.getElementById('g-ws').value = p.ws;
+  document.getElementById('g-lp').value = p.lp;
+  document.getElementById('g-sv').value = p.sv;
+  document.getElementById('g-ed').value = p.ed;
+  document.getElementById('g-iot').value = p.iot;
+  document.getElementById('g-sub').value = p.sub;
+  document.getElementById('g-hv').value = p.hv;
+}
+ 
+function generateNetwork() {
+  const ws  = Math.min(5000, parseInt(document.getElementById('g-ws').value)||0);
+  const lp  = Math.min(5000, parseInt(document.getElementById('g-lp').value)||0);
+  const sv  = Math.min(1000, parseInt(document.getElementById('g-sv').value)||0);
+  const ed  = Math.min(500,  parseInt(document.getElementById('g-ed').value)||0);
+  const iot = Math.min(500,  parseInt(document.getElementById('g-iot').value)||0);
+  const subs = Math.min(50,  parseInt(document.getElementById('g-sub').value)||1);
+  const hv  = Math.min(100,  parseInt(document.getElementById('g-hv').value)||0);
+  const layout = document.getElementById('g-layout').value;
+  const total = ws + lp + sv + ed + iot + hv;
+  if (total === 0) { log('warn','No nodes to generate'); return; }
+  if (total > 10000) { log('warn','Max 10000 nodes'); return; }
+ 
+  state.nodes = [];
+  state.edges = [];
+  state.subnets = [];
+  state.selected = null;
+  nodeIdSeq = 0;
+ 
+  // Create subnets
+  const W = 2400, H = 1600;
+  const subnetDefs = [];
+  for (let i = 0; i < subs; i++) {
+    const angle = (i / subs) * Math.PI * 2;
+    const dist = subs === 1 ? 0 : Math.min(W, H) * 0.28;
+    subnetDefs.push({
+      id: i,
+      name: ['Corp LAN','DMZ','OT Network','Guest WiFi','DC Segment','Management','IoT VLAN','Cloud VPC','HR VLAN','Servers'][i] || ('VLAN-' + (i+1)),
+      cx: W/2 + Math.cos(angle) * dist,
+      cy: H/2 + Math.sin(angle) * dist,
+      rx: Math.max(180, W / (subs + 1) * 0.7),
+      ry: Math.max(140, H / (subs + 1) * 0.6),
+      color: SUBNET_COLORS[i % SUBNET_COLORS.length],
+    });
+    state.subnets.push(subnetDefs[i]);
+  }
+ 
+  function randomInSubnet(sn) {
+    const angle = Math.random() * Math.PI * 2;
+    const dist = Math.random() * 0.85;
+    return {
+      x: sn.cx + Math.cos(angle) * sn.rx * dist,
+      y: sn.cy + Math.sin(angle) * sn.ry * dist,
+    };
+  }
+ 
+  function addNode(type, label, subnetIdx, extra) {
+    const sn = subnetDefs[subnetIdx % subnetDefs.length];
+    const pos = randomInSubnet(sn);
+    const node = {
+      id: nodeIdSeq++,
+      type, label,
+      x: pos.x, y: pos.y,
+      subnet: sn.id,
+      status: Math.random() < 0.25 ? 'vulnerable' : 'safe',
+      roles: [],
+      vulns: [],
+      infected: false,
+      isolated: false,
+      hasCreds: false,
+    };
+    Object.assign(node, extra || {});
+    state.nodes.push(node);
+    return node;
+  }
+ 
+  // Add nodes
+  const servers = [];
+  const dcs = [];
+  const hvHosts = [];
+ 
+  for (let i = 0; i < sv; i++) {
+    const isDC = i < Math.max(1, Math.floor(sv * 0.2));
+    const sn = isDC ? 0 : Math.floor(Math.random() * subs);
+    const n = addNode(isDC ? 'dc' : 'server', isDC ? 'DC-' + (i+1) : 'SRV-' + (i+1), sn, {
+      roles: isDC ? ['DomainController','ActiveDirectory'] : ['FileServer'],
+      status: isDC ? 'safe' : (Math.random() < 0.3 ? 'vulnerable' : 'safe'),
+    });
+    if (isDC) dcs.push(n); else servers.push(n);
+  }
+ 
+  for (let i = 0; i < hv; i++) {
+    const n = addNode('hyperv', 'HV-' + (i+1), Math.floor(Math.random() * subs), {
+      roles: ['HyperVHost'], status: Math.random() < 0.2 ? 'vulnerable' : 'safe'
+    });
+    hvHosts.push(n);
+    const vmCount = 2 + Math.floor(Math.random() * 4);
+    for (let v = 0; v < vmCount; v++) {
+      addNode('vm', 'VM-' + (i+1) + '.' + (v+1), n.subnet, { roles:['VM'], parentHV: n.id });
+    }
+  }
+ 
+  const chunkSub = (count, type, prefix, subIdx) => {
+    for (let i = 0; i < count; i++) {
+      addNode(type, prefix + '-' + (i+1), subIdx !== undefined ? subIdx : Math.floor(Math.random() * subs));
+    }
+  };
+ 
+  chunkSub(ws,  'workstation', 'WS');
+  chunkSub(lp,  'laptop',      'LT');
+  chunkSub(ed,  'edge',        'EDGE');
+  chunkSub(iot, 'iot',         'IOT');
+ 
+  // Build edges
+  const protocols = ['smb','wmi','winrm','http','rmm'];
+  const allNodes = state.nodes;
+ 
+  // Each server connects to some workstations
+  for (const srv of [...servers, ...dcs]) {
+    const wsList = allNodes.filter(n => n.type === 'workstation' || n.type === 'laptop');
+    const sample = wsList.sort(() => Math.random() - 0.5).slice(0, Math.min(8, wsList.length));
+    for (const ws of sample) {
+      state.edges.push({ id: edgeIdSeq++, src: srv.id, dst: ws.id, protocol: 'smb', active: false });
+    }
+  }
+ 
+  // HV to VMs
+  for (const hv of hvHosts) {
+    const vms = allNodes.filter(n => n.parentHV === hv.id);
+    for (const vm of vms) {
+      state.edges.push({ id: edgeIdSeq++, src: hv.id, dst: vm.id, protocol: 'hyperv', active: false });
+    }
+  }
+ 
+  // Random lateral paths
+  const lateralCount = Math.min(total * 1.5, 8000);
+  for (let i = 0; i < lateralCount; i++) {
+    const a = allNodes[Math.floor(Math.random() * allNodes.length)];
+    const b = allNodes[Math.floor(Math.random() * allNodes.length)];
+    if (a.id !== b.id) {
+      state.edges.push({ id: edgeIdSeq++, src: a.id, dst: b.id, protocol: protocols[Math.floor(Math.random() * protocols.length)], active: false });
+    }
+  }
+ 
+  // Add stolen creds to some nodes
+  const credCount = Math.max(1, Math.floor(total * 0.05));
+  for (let i = 0; i < credCount; i++) {
+    allNodes[Math.floor(Math.random() * allNodes.length)].hasCreds = true;
+  }
+ 
+  // Layout adjustment
+  if (layout === 'hierarchical') layoutHierarchical();
+  else if (layout === 'ring') layoutRing();
+ 
+  fitView();
+  updateStats();
+  renderObjList();
+  log('ok', 'Generated ' + total + ' nodes, ' + state.edges.length + ' edges');
+}
+ 
+function layoutHierarchical() {
+  // Push DCs/servers to top, workstations to bottom
+  const H = 1600;
+  for (const n of state.nodes) {
+    if (n.type === 'dc') n.y = 100 + Math.random() * 100;
+    else if (n.type === 'server' || n.type === 'hyperv') n.y = 250 + Math.random() * 150;
+    else if (n.type === 'edge') n.y = H - 100 + Math.random() * 80;
+    else n.y = 500 + Math.random() * (H - 650);
+  }
+}
+ 
+function layoutRing() {
+  const cx = 1200, cy = 800;
+  state.nodes.forEach((n, i) => {
+    const angle = (i / state.nodes.length) * Math.PI * 2;
+    const r = 300 + Math.random() * 400;
+    n.x = cx + Math.cos(angle) * r;
+    n.y = cy + Math.sin(angle) * r;
+  });
+}
+ 
+// ════════════════════════════════════════════════════════
+//  SIMULATION
+// ════════════════════════════════════════════════════════
+function toggleSim() {
+  if (state.simRunning) {
+    stopSim();
+  } else {
+    startSim();
+  }
+}
+ 
+function startSim() {
+  const patientZero = state.nodes.find(n => n.infected);
+  if (!patientZero) {
+    if (state.nodes.length === 0) { log('warn', 'Generate a network first'); return; }
+    const start = state.nodes[Math.floor(Math.random() * state.nodes.length)];
+    start.infected = true;
+    log('crit', 'Patient zero: ' + start.label);
+  }
+  state.simRunning = true;
+  state.simTick = 0;
+  document.getElementById('btn-run').textContent = '⏹ Stop';
+  document.getElementById('btn-run').classList.add('running');
+  scheduleSimTick();
+}
+ 
+function stopSim() {
+  state.simRunning = false;
+  clearTimeout(state.simTimer);
+  document.getElementById('btn-run').textContent = '▶ Run Sim';
+  document.getElementById('btn-run').classList.remove('running');
+  log('info', 'Simulation paused at tick ' + state.simTick);
+}
+ 
+function resetSim() {
+  stopSim();
+  for (const n of state.nodes) {
+    n.infected = false;
+    n.isolated = false;
+  }
+  for (const e of state.edges) e.active = false;
+  state.simTick = 0;
+  updateStats();
+  clearLog();
+  log('info', 'Simulation reset');
+  draw();
+}
+ 
+function scheduleSimTick() {
+  if (!state.simRunning) return;
+  const speed = parseInt(document.getElementById('sim-speed').value);
+  const delay = Math.max(50, 1200 - speed * 110);
+  state.simTimer = setTimeout(() => { simStep(); scheduleSimTick(); }, delay);
+}
+ 
+function simStep() {
+  state.simTick++;
+  const vectors = VECTORS.filter(v => v.on);
+  const mitigations = {};
+  for (const m of MITIGATIONS) mitigations[m.id] = m.on;
+ 
+  const infected = state.nodes.filter(n => n.infected && !n.isolated);
+  if (infected.length === 0) { stopSim(); log('ok', 'All infection paths exhausted'); return; }
+ 
+  let newInfections = 0;
+ 
+  for (const src of infected) {
+    const edges = state.edges.filter(e => e.src === src.id || e.dst === src.id);
+    for (const edge of edges) {
+      const targetId = edge.src === src.id ? edge.dst : edge.src;
+      const target = state.nodes.find(n => n.id === targetId);
+      if (!target || target.infected || target.isolated) continue;
+ 
+      const proto = edge.protocol;
+ 
+      // Check if vector is enabled
+      const vectorEnabled = vectors.some(v => v.id === proto || (proto === 'smb' && v.id === 'smb') || (proto === 'wmi' && v.id === 'wmi'));
+      if (!vectorEnabled && proto !== 'hyperv') continue;
+ 
+      // Base spread probability
+      let prob = 0.15;
+      if (target.status === 'vulnerable') prob += 0.3;
+      if (target.hasCreds || src.hasCreds) prob += 0.25;
+ 
+      // Mitigations reduce probability
+      if (mitigations['edr']) prob -= 0.2;
+      if (mitigations['segmented'] && target.subnet !== src.subnet) prob -= 0.4;
+      if (mitigations['smb-sign'] && proto === 'smb') prob -= 0.35;
+      if (mitigations['winrm-off'] && proto === 'winrm') prob = 0;
+      if (mitigations['wmi-off'] && proto === 'wmi') prob = 0;
+      if (mitigations['pam'] && (target.roles.includes('DomainController') || target.hasCreds)) prob -= 0.3;
+      if (mitigations['mfa'] && vectors.some(v => v.id === 'creds' && v.on)) prob -= 0.25;
+      if (mitigations['rmm-ctrl'] && proto === 'rmm') prob -= 0.5;
+ 
+      // HyperV escape
+      if (proto === 'hyperv' && vectors.some(v => v.id === 'hyperv' && v.on)) prob += 0.4;
+ 
+      prob = Math.max(0, Math.min(1, prob));
+      if (Math.random() < prob) {
+        target.infected = true;
+        edge.active = true;
+        newInfections++;
+        log('crit', 'T' + state.simTick + ': ' + src.label + ' → ' + target.label + ' via ' + proto.toUpperCase());
+ 
+        // Propagate credentials
+        if (src.hasCreds && Math.random() < 0.5) {
+          target.hasCreds = true;
+        }
+ 
+        // Ransomware on servers
+        if (target.type === 'server' || target.type === 'dc') {
+          log('warn', '⚠ Server encrypted: ' + target.label);
+        }
+ 
+        if (newInfections > 50) break; // cap per tick
+      }
+    }
+    if (newInfections > 50) break;
+  }
+ 
+  if (newInfections === 0 && state.simTick > 2) {
+    log('ok', 'No new infections this tick — ransomware contained');
+    stopSim();
+  }
+ 
+  updateStats();
+  if (state.selected) renderDetail(state.selected);
+}
+ 
+// ════════════════════════════════════════════════════════
+//  STATS
+// ════════════════════════════════════════════════════════
+function updateStats() {
+  const total = state.nodes.length;
+  const inf = state.nodes.filter(n => n.infected).length;
+  const vuln = state.nodes.filter(n => n.status === 'vulnerable' && !n.infected).length;
+  const safe = total - inf - vuln;
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-inf').textContent = inf;
+  document.getElementById('stat-vuln').textContent = vuln;
+  document.getElementById('stat-safe').textContent = Math.max(0, safe);
+}
+ 
+// ════════════════════════════════════════════════════════
+//  UI PANELS
+// ════════════════════════════════════════════════════════
+function setTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => { if(t.textContent.toLowerCase().includes(name)) t.classList.add('active'); });
+  document.getElementById('tab-design').style.display = name === 'design' ? '' : 'none';
+  const objTab = document.getElementById('tab-objects');
+  objTab.style.display = name === 'objects' ? 'flex' : 'none';
+  if (name === 'objects') renderObjList();
+}
+ 
+function renderVectors() {
+  const list = document.getElementById('vector-list');
+  list.innerHTML = '';
+  for (const v of VECTORS) {
+    const div = document.createElement('div');
+    div.className = 'vector-item';
+    div.innerHTML =
+      '<button class="vector-toggle ' + (v.on ? 'on' : '') + '" onclick="toggleVector(\'' + v.id + '\')"></button>' +
+      '<span class="vector-name">' + v.name + '</span>' +
+      '<span class="vector-severity sev-' + v.sev + '">' + v.sev.toUpperCase().slice(0,4) + '</span>';
+    list.appendChild(div);
+  }
+}
+ 
+function toggleVector(id) {
+  const v = VECTORS.find(v => v.id === id);
+  if (v) v.on = !v.on;
+  renderVectors();
+}
+ 
+function renderMitigations() {
+  const list = document.getElementById('mitig-list');
+  list.innerHTML = '';
+  for (const m of MITIGATIONS) {
+    const div = document.createElement('div');
+    div.className = 'mitig-item' + (m.on ? ' active' : '');
+    div.innerHTML =
+      '<input type="checkbox" ' + (m.on ? 'checked' : '') + ' onchange="toggleMitigation(\'' + m.id + '\')">' +
+      '<label onclick="toggleMitigation(\'' + m.id + '\')">' + m.label + '</label>';
+    list.appendChild(div);
+  }
+}
+ 
+function toggleMitigation(id) {
+  const m = MITIGATIONS.find(m => m.id === id);
+  if (m) m.on = !m.on;
+  renderMitigations();
+  log('info', (m.on ? '✔ Enabled: ' : '✘ Disabled: ') + m.label);
+}
+ 
+// ════════════════════════════════════════════════════════
+//  OBJECT LIST
+// ════════════════════════════════════════════════════════
+function renderObjList(filter) {
+  const list = document.getElementById('obj-list');
+  let nodes = state.nodes;
+  if (filter) nodes = nodes.filter(n => n.label.toLowerCase().includes(filter.toLowerCase()) || n.type.includes(filter.toLowerCase()));
+  const maxShow = 500;
+  list.innerHTML = '';
+  const shown = nodes.slice(0, maxShow);
+  for (const node of shown) {
+    const div = document.createElement('div');
+    div.className = 'obj-item' + (state.selected === node.id ? ' selected' : '');
+    const statusColor = node.infected ? 'var(--red)' : node.status === 'vulnerable' ? 'var(--orange)' : 'var(--green)';
+    div.innerHTML =
+      '<span class="obj-icon">' + (NODE_TYPES[node.type]?.icon || '●') + '</span>' +
+      '<span class="obj-name">' + node.label + '</span>' +
+      '<div class="obj-status" style="background:' + statusColor + '"></div>';
+    div.onclick = () => selectNode(node.id);
+    list.appendChild(div);
+  }
+  if (nodes.length > maxShow) {
+    const div = document.createElement('div');
+    div.style.cssText = 'padding:6px 8px;font-size:10px;color:var(--text3);text-align:center;';
+    div.textContent = '+ ' + (nodes.length - maxShow) + ' more…';
+    list.appendChild(div);
+  }
+}
+ 
+function filterObjects(val) { renderObjList(val); }
+ 
+// ════════════════════════════════════════════════════════
+//  NODE DETAIL
+// ════════════════════════════════════════════════════════
+function selectNode(id) {
+  state.selected = id;
+  renderDetail(id);
+  draw();
+}
+ 
+function renderDetail(id) {
+  const node = state.nodes.find(n => n.id === id);
+  const panel = document.getElementById('detail-panel');
+  if (!node) { panel.innerHTML = '<div class="detail-empty"><div class="icon">⬡</div><div>Select a node to inspect</div></div>'; return; }
+ 
+  const sn = state.subnets.find(s => s.id === node.subnet);
+  const connections = state.edges.filter(e => e.src === node.id || e.dst === node.id).length;
+  const activeConns = state.edges.filter(e => (e.src === node.id || e.dst === node.id) && e.active).length;
+ 
+  let statusTag = node.infected ? '<span class="tag tag-red">INFECTED</span>' :
+    node.isolated ? '<span class="tag tag-blue">ISOLATED</span>' :
+    node.status === 'vulnerable' ? '<span class="tag tag-orange">VULNERABLE</span>' :
+    '<span class="tag tag-green">CLEAN</span>';
+ 
+  let rolesTags = (node.roles||[]).map(r => '<span class="tag tag-gray">' + r + '</span>').join('');
+  let credTag = node.hasCreds ? '<span class="tag tag-orange">STOLEN CREDS</span>' : '';
+ 
+  panel.innerHTML =
+    '<div class="detail-header">' +
+      '<div class="detail-title">' + (NODE_TYPES[node.type]?.icon || '') + ' ' + node.label + '</div>' +
+      '<div class="detail-sub">' + node.type.toUpperCase() + ' · ID:' + node.id + '</div>' +
+    '</div>' +
+    '<div class="detail-section">' +
+      '<div class="detail-section-title">Status</div>' +
+      '<div class="tag-list">' + statusTag + credTag + rolesTags + '</div>' +
+    '</div>' +
+    '<div class="detail-section">' +
+      '<div class="detail-section-title">Network</div>' +
+      '<div class="kv-row"><span class="kv-key">Subnet</span><span class="kv-val">' + (sn?.name || 'None') + '</span></div>' +
+      '<div class="kv-row"><span class="kv-key">Connections</span><span class="kv-val">' + connections + '</span></div>' +
+      '<div class="kv-row"><span class="kv-key">Active Infection Paths</span><span class="kv-val" style="color:var(--red)">' + activeConns + '</span></div>' +
+      '<div class="kv-row"><span class="kv-key">Position</span><span class="kv-val">' + Math.round(node.x) + ', ' + Math.round(node.y) + '</span></div>' +
+    '</div>' +
+    '<div class="detail-section">' +
+      '<div class="detail-section-title">Actions</div>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:5px;">' +
+        '<button class="btn-secondary" style="flex:1;min-width:80px;" onclick="ctxAction(\'patient\')">Set Patient Zero</button>' +
+        '<button class="btn-secondary" style="flex:1;min-width:80px;" onclick="ctxAction(\'isolate\')">' + (node.isolated ? 'Un-isolate' : 'Isolate') + '</button>' +
+        '<button class="btn-secondary" style="flex:1;min-width:80px;" onclick="ctxAction(\'vuln\')">' + (node.status === 'vulnerable' ? 'Mark Safe' : 'Mark Vuln') + '</button>' +
+        '<button class="btn-secondary" style="flex:1;min-width:80px;" onclick="ctxAction(\'creds\')">' + (node.hasCreds ? 'Remove Creds' : 'Add Creds') + '</button>' +
+      '</div>' +
+    '</div>';
+}
+ 
+function ctxAction(action) {
+  const node = state.nodes.find(n => n.id === state.selected);
+  if (!node) return;
+  if (action === 'patient') { resetInfection(); node.infected = true; log('crit', 'Patient zero set: ' + node.label); }
+  else if (action === 'isolate') { node.isolated = !node.isolated; node.infected = false; log('info', (node.isolated?'Isolated':'Un-isolated') + ': ' + node.label); }
+  else if (action === 'vuln') { node.status = node.status === 'vulnerable' ? 'safe' : 'vulnerable'; }
+  else if (action === 'creds') { node.hasCreds = !node.hasCreds; log('warn', (node.hasCreds?'Creds added':'Creds removed') + ': ' + node.label); }
+  renderDetail(state.selected);
+  updateStats();
+  draw();
+}
+ 
+function resetInfection() {
+  for (const n of state.nodes) { n.infected = false; }
+  for (const e of state.edges) e.active = false;
+}
+ 
+// ════════════════════════════════════════════════════════
+//  CANVAS INTERACTION
+// ════════════════════════════════════════════════════════
+function setTool(t) {
+  state.tool = t;
+  document.getElementById('tool-select').classList.toggle('active', t === 'select');
+  document.getElementById('tool-pan').classList.toggle('active', t === 'pan');
+  canvas.style.cursor = t === 'pan' ? 'grab' : 'default';
+}
+ 
+function hitTest(sx, sy, r) {
+  const w = screenToWorld(sx, sy);
+  const hitR = Math.max(10, r * 1.5);
+  for (let i = state.nodes.length - 1; i >= 0; i--) {
+    const n = state.nodes[i];
+    const dx = n.x - w.x, dy = n.y - w.y;
+    if (dx*dx + dy*dy < hitR * hitR) return n;
+  }
+  return null;
+}
+ 
+canvas.addEventListener('mousedown', e => {
+  const r = Math.max(5, Math.min(12, 10 / state.camZ * 0.6 + 4));
+  if (state.tool === 'pan' || e.button === 1) {
+    state.panning = true;
+    state.panStartX = e.clientX; state.panStartY = e.clientY;
+    state.panCamX = state.camX; state.panCamY = state.camY;
+    canvas.classList.add('grabbing');
+    return;
+  }
+  const node = hitTest(e.offsetX, e.offsetY, r);
+  if (node) {
+    state.dragging = true;
+    state.dragNode = node;
+    const w = screenToWorld(e.offsetX, e.offsetY);
+    state.nodeDragOX = node.x - w.x;
+    state.nodeDragOY = node.y - w.y;
+    selectNode(node.id);
+  } else {
+    state.selected = null;
+    document.getElementById('detail-panel').innerHTML = '<div class="detail-empty"><div class="icon">⬡</div><div>Select a node to inspect</div></div>';
+    draw();
+  }
+});
+ 
+canvas.addEventListener('mousemove', e => {
+  if (state.panning) {
+    state.camX = state.panCamX + (e.clientX - state.panStartX);
+    state.camY = state.panCamY + (e.clientY - state.panStartY);
+    draw(); return;
+  }
+  if (state.dragging && state.dragNode) {
+    const w = screenToWorld(e.offsetX, e.offsetY);
+    state.dragNode.x = w.x + state.nodeDragOX;
+    state.dragNode.y = w.y + state.nodeDragOY;
+    draw();
+  }
+});
+ 
+canvas.addEventListener('mouseup', e => {
+  state.dragging = false; state.dragNode = null;
+  state.panning = false; canvas.classList.remove('grabbing');
+});
+ 
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const factor = e.deltaY < 0 ? 1.1 : 0.91;
+  const wx = (e.offsetX - state.camX) / state.camZ;
+  const wy = (e.offsetY - state.camY) / state.camZ;
+  state.camZ = Math.max(0.05, Math.min(5, state.camZ * factor));
+  state.camX = e.offsetX - wx * state.camZ;
+  state.camY = e.offsetY - wy * state.camZ;
+  draw();
+}, { passive: false });
+ 
+canvas.addEventListener('contextmenu', e => {
+  e.preventDefault();
+  const r = Math.max(5, Math.min(12, 10 / state.camZ * 0.6 + 4));
+  const node = hitTest(e.offsetX, e.offsetY, r);
+  if (node) {
+    contextNode = node;
+    selectNode(node.id);
+    showCtxMenu(e.clientX, e.clientY);
+  }
+});
+ 
+function showCtxMenu(x, y) {
+  const menu = document.getElementById('ctx-menu');
+  menu.style.display = 'block';
+  menu.style.left = x + 'px';
+  menu.style.top = y + 'px';
+}
+document.addEventListener('click', () => { document.getElementById('ctx-menu').style.display = 'none'; });
+ 
+function ctxSetPatient() { if(!contextNode) return; resetInfection(); contextNode.infected=true; log('crit','Patient zero: '+contextNode.label); updateStats(); draw(); }
+function ctxToggleVuln() { if(!contextNode) return; contextNode.status=contextNode.status==='vulnerable'?'safe':'vulnerable'; updateStats(); draw(); }
+function ctxIsolate() { if(!contextNode) return; contextNode.isolated=!contextNode.isolated; contextNode.infected=false; log('info',(contextNode.isolated?'Isolated':'Un-isolated')+': '+contextNode.label); updateStats(); draw(); }
+function ctxAddCreds() { if(!contextNode) return; contextNode.hasCreds=!contextNode.hasCreds; log('warn',(contextNode.hasCreds?'Creds on':'Creds off')+': '+contextNode.label); draw(); }
+function ctxAddAdmin() { if(!contextNode) return; if(!contextNode.roles.includes('Admin')) contextNode.roles.push('Admin'); log('warn','Admin role: '+contextNode.label); renderDetail(contextNode.id); }
+function ctxDelete() { if(!contextNode) return; state.nodes=state.nodes.filter(n=>n.id!==contextNode.id); state.edges=state.edges.filter(e=>e.src!==contextNode.id&&e.dst!==contextNode.id); if(state.selected===contextNode.id){state.selected=null; document.getElementById('detail-panel').innerHTML='<div class="detail-empty"><div class="icon">⬡</div><div>Select a node to inspect</div></div>';} updateStats(); renderObjList(); draw(); contextNode=null; }
+ 
+// ════════════════════════════════════════════════════════
+//  CAMERA
+// ════════════════════════════════════════════════════════
+function fitView() {
+  if (state.nodes.length === 0) return;
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  for (const n of state.nodes) {
+    if (n.x < minX) minX = n.x; if (n.y < minY) minY = n.y;
+    if (n.x > maxX) maxX = n.x; if (n.y > maxY) maxY = n.y;
+  }
+  const pad = 60;
+  const W = canvas.width, H = canvas.height;
+  const nx = maxX - minX + pad*2, ny = maxY - minY + pad*2;
+  state.camZ = Math.max(0.05, Math.min(2, Math.min(W/nx, H/ny)));
+  state.camX = W/2 - (minX + (maxX-minX)/2) * state.camZ;
+  state.camY = H/2 - (minY + (maxY-minY)/2) * state.camZ;
+  draw();
+}
+ 
+function zoomIn() { state.camZ = Math.min(5, state.camZ * 1.2); draw(); }
+function zoomOut() { state.camZ = Math.max(0.05, state.camZ / 1.2); draw(); }
+ 
+// ════════════════════════════════════════════════════════
+//  LOG
+// ════════════════════════════════════════════════════════
+let logCount = 0;
+function log(type, msg) {
+  logCount++;
+  if (logCount > 500) return; // cap
+  const el = document.getElementById('log-entries');
+  const row = document.createElement('div');
+  row.className = 'log-entry';
+  const now = new Date();
+  const t = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0') + ':' + now.getSeconds().toString().padStart(2,'0');
+  row.innerHTML = '<span class="log-time">' + t + '</span><span class="log-' + type + '">' + msg + '</span>';
+  el.appendChild(row);
+  el.scrollTop = el.scrollHeight;
+}
+function clearLog() { document.getElementById('log-entries').innerHTML = ''; logCount = 0; }
+ 
+// ════════════════════════════════════════════════════════
+//  EXPORT / IMPORT
+// ════════════════════════════════════════════════════════
+function openExport() {
+  const data = { nodes: state.nodes, edges: state.edges, subnets: state.subnets, vectors: VECTORS, mitigations: MITIGATIONS };
+  document.getElementById('modal-title').textContent = 'Export Design';
+  document.getElementById('modal-data').value = JSON.stringify(data, null, 2);
+  document.getElementById('modal-action-btn').textContent = 'Copy';
+  modalMode = 'export';
+  document.getElementById('modal-overlay').classList.add('open');
+}
+ 
+function openImport() {
+  document.getElementById('modal-title').textContent = 'Import Design';
+  document.getElementById('modal-data').value = '';
+  document.getElementById('modal-action-btn').textContent = 'Import';
+  modalMode = 'import';
+  document.getElementById('modal-overlay').classList.add('open');
+}
+ 
+function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
+ 
+function modalAction() {
+  if (modalMode === 'export') {
+    navigator.clipboard.writeText(document.getElementById('modal-data').value).then(() => {
+      document.getElementById('modal-action-btn').textContent = '✓ Copied!';
+      setTimeout(() => { document.getElementById('modal-action-btn').textContent = 'Copy'; }, 1500);
+    });
+  } else {
+    try {
+      const data = JSON.parse(document.getElementById('modal-data').value);
+      state.nodes = data.nodes || [];
+      state.edges = data.edges || [];
+      state.subnets = data.subnets || [];
+      if (data.vectors) { for (const v of data.vectors) { const fv = VECTORS.find(x=>x.id===v.id); if(fv) fv.on=v.on; } }
+      if (data.mitigations) { for (const m of data.mitigations) { const fm = MITIGATIONS.find(x=>x.id===m.id); if(fm) fm.on=m.on; } }
+      // Restore nodeIdSeq
+      nodeIdSeq = Math.max(...state.nodes.map(n=>n.id), 0) + 1;
+      renderVectors(); renderMitigations(); renderObjList(); updateStats(); fitView();
+      log('ok', 'Imported ' + state.nodes.length + ' nodes');
+      closeModal();
+    } catch(err) { log('warn', 'Import failed: ' + err.message); }
+  }
+}
+ 
+// ════════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════════
+renderVectors();
+renderMitigations();
+setTool('select');
+resize();
+ 
+// Start with a small default network
+document.getElementById('g-ws').value = 20;
+document.getElementById('g-lp').value = 8;
+document.getElementById('g-sv').value = 4;
+document.getElementById('g-ed').value = 2;
+document.getElementById('g-iot').value = 4;
+document.getElementById('g-sub').value = 2;
+document.getElementById('g-hv').value = 1;
+generateNetwork();
+</script>
+</body>
+</html>
+ 
