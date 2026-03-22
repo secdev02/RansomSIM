@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RansomSim — Network Attack Modeler</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+:root {
+  --bg:#0d1117;--bg2:#161b22;--bg3:#21262d;--bg4:#30363d;
+  --border:#30363d;--border2:#484f58;
+  --text:#e6edf3;--text2:#8b949e;--text3:#6e7681;
+  --red:#f85149;--orange:#d29922;--green:#3fb950;--blue:#58a6ff;
+  --purple:#bc8cff;--cyan:#39d353;--pink:#ff7ab2;
+  --accent:#1f6feb;--accent2:#388bfd;
+  --font-mono:'IBM Plex Mono',monospace;--font-sans:'IBM Plex Sans',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--font-sans);background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden;font-size:13px;}
+#topbar{display:flex;align-items:center;gap:8px;padding:0 14px;height:44px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;z-index:100;}
+.logo{font-family:var(--font-mono);font-size:14px;font-weight:600;color:var(--red);letter-spacing:1px;margin-right:4px;}
+.logo span{color:var(--text2);}
+.tab-group{display:flex;gap:2px;}
+.tab{padding:5px 12px;border-radius:4px;cursor:pointer;font-size:12px;font-weight:500;color:var(--text2);transition:all .15s;border:none;background:none;}
+.tab:hover{background:var(--bg3);color:var(--text);}
+.tab.active{background:var(--accent);color:#fff;}
+.spacer{flex:1;}
+.stat-pill{display:flex;align-items:center;gap:5px;padding:3px 9px;border-radius:12px;background:var(--bg3);border:1px solid var(--border);font-family:var(--font-mono);font-size:11px;}
+.stat-pill .dot{width:6px;height:6px;border-radius:50%;}
+.dot-red{background:var(--red);}.dot-green{background:var(--green);}.dot-orange{background:var(--orange);}.dot-blue{background:var(--blue);}.dot-pink{background:var(--pink);}
+#btn-run{padding:5px 14px;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600;border:none;background:var(--red);color:#fff;transition:all .15s;font-family:var(--font-sans);}
+#btn-run:hover{background:#ff6b6b;}
+#btn-run.running{background:var(--orange);}
+.hdr-btn{padding:5px 10px;border-radius:4px;cursor:pointer;font-size:12px;font-weight:500;border:1px solid var(--border2);background:none;color:var(--text2);transition:all .15s;font-family:var(--font-sans);}
+.hdr-btn:hover{background:var(--bg3);color:var(--text);}
+.hdr-btn.replay-active{background:rgba(57,211,83,.15);border-color:var(--green);color:var(--green);}
+#main{display:flex;flex:1;overflow:hidden;}
+#left-panel{width:258px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+.panel-section{border-bottom:1px solid var(--border);}
+.panel-title{padding:7px 12px;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:1px;display:flex;justify-content:space-between;align-items:center;}
+.panel-body{padding:8px 12px;}
+.gen-row{display:flex;gap:6px;margin-bottom:5px;align-items:center;}
+.gen-row label{font-size:11px;color:var(--text2);width:88px;flex-shrink:0;}
+.gen-row input[type=number],.gen-row select{flex:1;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:3px 7px;font-family:var(--font-mono);font-size:11px;}
+.gen-row input:focus,.gen-row select:focus{outline:none;border-color:var(--accent2);}
+.gen-presets{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:7px;}
+.preset-btn{padding:3px 7px;border-radius:3px;cursor:pointer;font-size:11px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);transition:all .12s;}
+.preset-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent);}
+.btn-primary{width:100%;padding:6px;border-radius:4px;cursor:pointer;font-size:12px;font-weight:500;border:none;background:var(--accent);color:#fff;transition:all .15s;font-family:var(--font-sans);margin-top:4px;}
+.btn-primary:hover{background:var(--accent2);}
+.btn-secondary{flex:1;padding:5px;border-radius:4px;cursor:pointer;font-size:11px;font-weight:500;border:1px solid var(--border2);background:none;color:var(--text2);transition:all .15s;font-family:var(--font-sans);}
+.btn-secondary:hover{background:var(--bg3);color:var(--text);}
+.vector-list{display:flex;flex-direction:column;gap:2px;padding:4px 8px;}
+.vector-item{display:flex;align-items:center;gap:7px;padding:3px 4px;border-radius:4px;}
+.vector-toggle{width:28px;height:14px;border-radius:7px;position:relative;background:var(--bg4);border:none;cursor:pointer;flex-shrink:0;transition:background .2s;}
+.vector-toggle::after{content:'';position:absolute;top:2px;left:2px;width:10px;height:10px;border-radius:50%;background:var(--text3);transition:all .2s;}
+.vector-toggle.on{background:var(--green);}
+.vector-toggle.on::after{left:16px;background:#fff;}
+.vector-name{font-size:11px;color:var(--text2);flex:1;}
+.vector-severity{font-family:var(--font-mono);font-size:9px;padding:1px 5px;border-radius:3px;font-weight:600;}
+.sev-critical{background:rgba(248,81,73,.2);color:var(--red);}
+.sev-high{background:rgba(210,153,34,.2);color:var(--orange);}
+.sev-medium{background:rgba(88,166,255,.2);color:var(--blue);}
+.mitig-list{display:flex;flex-direction:column;gap:2px;padding:4px 8px;}
+.mitig-item{display:flex;align-items:center;gap:7px;padding:3px 4px;border-radius:4px;}
+.mitig-item label{font-size:11px;color:var(--text2);flex:1;cursor:pointer;}
+.mitig-item input[type=checkbox]{accent-color:var(--green);cursor:pointer;flex-shrink:0;}
+.mitig-item.active label{color:var(--green);}
+.mitig-eff{font-family:var(--font-mono);font-size:9px;padding:1px 5px;border-radius:3px;background:var(--bg4);color:var(--text3);min-width:28px;text-align:right;}
+.mitig-eff.fired{background:rgba(63,185,80,.2);color:var(--green);}
+#obj-list{flex:1;overflow-y:auto;padding:4px 8px;}
+#obj-list::-webkit-scrollbar{width:4px;}
+#obj-list::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:2px;}
+.obj-item{display:flex;align-items:center;gap:6px;padding:3px 4px;border-radius:3px;cursor:pointer;font-size:11px;transition:background .1s;}
+.obj-item:hover{background:var(--bg3);}
+.obj-item.selected{background:rgba(31,111,235,.25);}
+.obj-icon{font-size:12px;width:16px;text-align:center;flex-shrink:0;}
+.obj-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text2);}
+.obj-status{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+#canvas-area{flex:1;position:relative;overflow:hidden;background:var(--bg);}
+#canvas-bg{position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(rgba(48,54,61,.35) 1px,transparent 1px),linear-gradient(90deg,rgba(48,54,61,.35) 1px,transparent 1px);background-size:32px 32px;}
+#netcanvas{position:absolute;inset:0;width:100%;height:100%;cursor:default;}
+#netcanvas.grabbing{cursor:grabbing;}
+#canvas-toolbar{position:absolute;top:10px;left:10px;z-index:10;display:flex;gap:4px;}
+.ctool-btn{padding:5px 10px;border-radius:4px;cursor:pointer;font-size:11px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);transition:all .15s;font-family:var(--font-sans);}
+.ctool-btn:hover{background:var(--bg3);color:var(--text);}
+.ctool-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+#replay-bar{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);z-index:20;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:8px 14px;display:none;align-items:center;gap:10px;box-shadow:0 4px 20px rgba(0,0,0,.5);}
+#replay-bar.visible{display:flex;}
+#replay-slider{width:200px;accent-color:var(--cyan);}
+.replay-btn{padding:3px 10px;border-radius:4px;cursor:pointer;font-size:11px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);transition:all .12s;font-family:var(--font-sans);}
+.replay-btn:hover{background:var(--bg4);color:var(--text);}
+.replay-btn.ractive{background:var(--cyan);color:#000;border-color:var(--cyan);}
+#replay-tick-label{font-family:var(--font-mono);font-size:11px;color:var(--text2);min-width:60px;}
+#right-panel{width:280px;flex-shrink:0;background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+#detail-panel{flex:1;overflow-y:auto;}
+#detail-panel::-webkit-scrollbar{width:4px;}
+#detail-panel::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:2px;}
+.detail-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text3);font-size:12px;gap:8px;}
+.detail-empty .icon{font-size:32px;opacity:.3;}
+.detail-header{padding:10px 14px;border-bottom:1px solid var(--border);}
+.detail-title{font-size:13px;font-weight:600;margin-bottom:2px;}
+.detail-sub{font-size:11px;color:var(--text2);font-family:var(--font-mono);}
+.detail-section{padding:8px 14px;border-bottom:1px solid var(--border);}
+.ds-title{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);font-weight:600;margin-bottom:6px;}
+.kv-row{display:flex;justify-content:space-between;margin-bottom:4px;}
+.kv-key{font-size:11px;color:var(--text2);}
+.kv-val{font-size:11px;font-family:var(--font-mono);color:var(--text);}
+.tag-list{display:flex;flex-wrap:wrap;gap:4px;}
+.tag{padding:2px 7px;border-radius:3px;font-size:10px;font-family:var(--font-mono);font-weight:600;}
+.tag-red{background:rgba(248,81,73,.15);color:var(--red);border:1px solid rgba(248,81,73,.3);}
+.tag-orange{background:rgba(210,153,34,.15);color:var(--orange);border:1px solid rgba(210,153,34,.3);}
+.tag-green{background:rgba(63,185,80,.15);color:var(--green);border:1px solid rgba(63,185,80,.3);}
+.tag-blue{background:rgba(88,166,255,.15);color:var(--blue);border:1px solid rgba(88,166,255,.3);}
+.tag-pink{background:rgba(255,122,178,.15);color:var(--pink);border:1px solid rgba(255,122,178,.3);}
+.tag-gray{background:var(--bg3);color:var(--text2);border:1px solid var(--border);}
+.analytics-section{padding:10px 12px;border-bottom:1px solid var(--border);}
+.analytics-title{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);font-weight:600;margin-bottom:8px;}
+.mitig-score-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.mitig-score-label{font-size:11px;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.mitig-bar-wrap{width:70px;height:6px;background:var(--bg4);border-radius:3px;overflow:hidden;}
+.mitig-bar-fill{height:100%;border-radius:3px;transition:width .4s;}
+.mitig-score-val{font-family:var(--font-mono);font-size:10px;color:var(--text2);width:24px;text-align:right;}
+.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.summary-card{background:var(--bg3);border-radius:5px;padding:8px 10px;}
+.summary-card-val{font-family:var(--font-mono);font-size:18px;font-weight:600;margin-bottom:2px;}
+.summary-card-label{font-size:10px;color:var(--text3);}
+.vsrow{display:flex;justify-content:space-between;margin-bottom:5px;align-items:center;}
+#sim-log{height:185px;border-top:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;}
+#log-entries{flex:1;overflow-y:auto;padding:4px 10px;font-family:var(--font-mono);font-size:10px;}
+#log-entries::-webkit-scrollbar{width:3px;}
+#log-entries::-webkit-scrollbar-thumb{background:var(--bg4);}
+.log-entry{padding:1px 0;display:flex;gap:6px;line-height:1.5;}
+.log-time{color:var(--text3);flex-shrink:0;}.log-tick{color:var(--text3);flex-shrink:0;min-width:26px;}
+.log-info{color:var(--text2);}.log-warn{color:var(--orange);}.log-crit{color:var(--red);}.log-ok{color:var(--green);}.log-decoy{color:var(--pink);}.log-mitig{color:var(--cyan);}
+#log-toolbar{display:flex;align-items:center;gap:5px;padding:5px 8px;border-top:1px solid var(--border);background:var(--bg2);flex-shrink:0;}
+.lfbtn{padding:2px 7px;border-radius:3px;cursor:pointer;font-size:10px;border:1px solid var(--border);background:none;color:var(--text3);transition:all .12s;font-family:var(--font-mono);}
+.lfbtn:hover{background:var(--bg3);color:var(--text);}
+.lfbtn.active{border-color:var(--accent2);color:var(--blue);background:rgba(56,139,253,.1);}
+.lexbtn{margin-left:auto;padding:2px 7px;border-radius:3px;cursor:pointer;font-size:10px;border:1px solid var(--border2);background:none;color:var(--text2);transition:all .12s;font-family:var(--font-sans);}
+.lexbtn:hover{background:var(--bg3);color:var(--text);}
+#speed-row{display:flex;align-items:center;gap:8px;padding:5px 12px;border-top:1px solid var(--border);background:var(--bg2);flex-shrink:0;}
+#speed-row label{font-size:10px;color:var(--text3);}
+#speed-row input[type=range]{flex:1;accent-color:var(--accent);height:4px;}
+#speed-val{font-family:var(--font-mono);font-size:10px;color:var(--text2);width:28px;}
+#ctx-menu{position:fixed;z-index:9999;background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:4px;min-width:170px;box-shadow:0 8px 24px rgba(0,0,0,.6);display:none;}
+.ctx-item{padding:5px 12px;font-size:12px;color:var(--text2);cursor:pointer;border-radius:3px;transition:background .1s;}
+.ctx-item:hover{background:var(--bg3);color:var(--text);}
+.ctx-sep{height:1px;background:var(--border);margin:3px 0;}
+.ctx-item.danger{color:var(--red);}.ctx-item.danger:hover{background:rgba(248,81,73,.1);}
+.ctx-item.decoy-act{color:var(--pink);}.ctx-item.decoy-act:hover{background:rgba(255,122,178,.1);}
+#modal-overlay{display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.7);align-items:center;justify-content:center;}
+#modal-overlay.open{display:flex;}
+#modal{background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:20px;width:520px;max-height:80vh;display:flex;flex-direction:column;gap:12px;}
+#modal h3{font-size:14px;font-weight:600;}
+#modal textarea{flex:1;min-height:240px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:10px;font-family:var(--font-mono);font-size:11px;resize:vertical;}
+.modal-btns{display:flex;gap:8px;}
+</style>
+</head>
+<body>
+<div id="topbar">
+  <div class="logo">RANSOM<span>SIM</span></div>
+  <div class="tab-group">
+    <button class="tab active" onclick="setTab('design')">Design</button>
+    <button class="tab" onclick="setTab('simulate')">Simulate</button>
+    <button class="tab" onclick="setTab('objects')">Objects</button>
+    <button class="tab" onclick="setTab('analytics')">Analytics</button>
+  </div>
+  <div class="spacer"></div>
+  <div class="stat-pill"><div class="dot dot-blue"></div><span id="stat-total">0</span> nodes</div>
+  <div class="stat-pill"><div class="dot dot-green"></div><span id="stat-safe">0</span> safe</div>
+  <div class="stat-pill"><div class="dot dot-red"></div><span id="stat-inf">0</span> infected</div>
+  <div class="stat-pill"><div class="dot dot-orange"></div><span id="stat-vuln">0</span> vuln</div>
+  <div class="stat-pill"><div class="dot dot-pink"></div><span id="stat-decoy">0</span> decoys</div>
+  <button class="hdr-btn" id="btn-replay" onclick="toggleReplayMode()">⏮ Replay</button>
+  <button class="hdr-btn" onclick="resetSim()">↺ Reset</button>
+  <button id="btn-run" onclick="toggleSim()">▶ Run Sim</button>
+</div>
+
+<div id="main">
+  <div id="left-panel">
+    <!-- DESIGN TAB -->
+    <div id="tab-design" style="display:flex;flex-direction:column;overflow-y:auto;flex:1;">
+      <div class="panel-section">
+        <div class="panel-title">Network Generator</div>
+        <div class="panel-body">
+          <div class="gen-presets">
+            <button class="preset-btn" onclick="applyPreset('smb')">SMB Corp</button>
+            <button class="preset-btn" onclick="applyPreset('hospital')">Hospital</button>
+            <button class="preset-btn" onclick="applyPreset('campus')">Campus</button>
+            <button class="preset-btn" onclick="applyPreset('datacenter')">Data Center</button>
+            <button class="preset-btn" onclick="applyPreset('factory')">Factory OT</button>
+          </div>
+          <div class="gen-row"><label>Workstations</label><input type="number" id="g-ws" value="20" min="0" max="5000"></div>
+          <div class="gen-row"><label>Laptops</label><input type="number" id="g-lp" value="10" min="0" max="5000"></div>
+          <div class="gen-row"><label>Servers</label><input type="number" id="g-sv" value="5" min="0" max="1000"></div>
+          <div class="gen-row"><label>Edge Devices</label><input type="number" id="g-ed" value="4" min="0" max="500"></div>
+          <div class="gen-row"><label>IoT/AV/TV</label><input type="number" id="g-iot" value="6" min="0" max="500"></div>
+          <div class="gen-row"><label>Subnets</label><input type="number" id="g-sub" value="3" min="1" max="50"></div>
+          <div class="gen-row"><label>HyperV Hosts</label><input type="number" id="g-hv" value="2" min="0" max="100"></div>
+          <div class="gen-row"><label>Decoys 🍯</label><input type="number" id="g-decoy" value="5" min="0" max="100"></div>
+          <div class="gen-row"><label>Layout</label>
+            <select id="g-layout">
+              <option value="hierarchical">Hierarchical</option>
+              <option value="clustered">Clustered</option>
+              <option value="random">Random</option>
+              <option value="ring">Ring</option>
+            </select>
+          </div>
+          <button class="btn-primary" onclick="generateNetwork()">⚡ Generate</button>
+          <div style="display:flex;gap:6px;margin-top:6px;">
+            <button class="btn-secondary" onclick="openExport()">Export Design</button>
+            <button class="btn-secondary" onclick="openImport()">Import Design</button>
+          </div>
+        </div>
+      </div>
+      <div class="panel-section">
+        <div class="panel-title">Attack Vectors</div>
+        <div class="vector-list" id="vector-list"></div>
+      </div>
+      <div class="panel-section">
+        <div class="panel-title">Mitigations <span style="color:var(--text3);font-size:9px;font-weight:400;">blocks fired →</span></div>
+        <div class="mitig-list" id="mitig-list"></div>
+      </div>
+    </div>
+
+    <!-- SIMULATE TAB -->
+    <div id="tab-simulate" style="display:none;flex-direction:column;overflow-y:auto;flex:1;">
+      <div class="panel-section">
+        <div class="panel-title">Decoy System</div>
+        <div class="panel-body">
+          <div class="gen-row"><label>Sensitivity</label>
+            <select id="decoy-sensitivity"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select>
+          </div>
+          <div class="gen-row"><label>Response</label>
+            <select id="decoy-response"><option value="alert">Alert Only</option><option value="isolate">Alert + Isolate</option><option value="quarantine">Full Quarantine</option></select>
+          </div>
+          <div style="margin-top:8px;padding:8px;background:var(--bg3);border-radius:5px;border:1px solid var(--border);">
+            <div style="font-size:10px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.8px;">Decoy Types</div>
+            <div id="decoy-type-list"></div>
+          </div>
+        </div>
+      </div>
+      <div class="panel-section">
+        <div class="panel-title">Scenario Seeds</div>
+        <div class="panel-body">
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <button class="preset-btn" style="text-align:left;" onclick="applySeed('phish')">📧 Phishing → Workstation</button>
+            <button class="preset-btn" style="text-align:left;" onclick="applySeed('supply')">📦 Supply Chain → Edge</button>
+            <button class="preset-btn" style="text-align:left;" onclick="applySeed('insider')">👤 Insider → Server</button>
+            <button class="preset-btn" style="text-align:left;" onclick="applySeed('rdp')">🖥 Exposed RDP → DC</button>
+            <button class="preset-btn" style="text-align:left;" onclick="applySeed('iot')">📺 IoT Pivot → LAN</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- OBJECTS TAB -->
+    <div id="tab-objects" style="display:none;flex:1;flex-direction:column;overflow:hidden;">
+      <div style="padding:6px 8px;border-bottom:1px solid var(--border);">
+        <input id="obj-search" placeholder="Filter objects…" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:4px 8px;font-size:11px;" oninput="filterObjects(this.value)">
+      </div>
+      <div id="obj-list"></div>
+    </div>
+
+    <!-- ANALYTICS TAB -->
+    <div id="tab-analytics" style="display:none;flex-direction:column;overflow-y:auto;flex:1;">
+      <div class="analytics-section">
+        <div class="analytics-title">Run Summary</div>
+        <div class="summary-grid" id="analytics-summary"><div style="font-size:11px;color:var(--text3);grid-column:span 2;">Run a simulation first</div></div>
+      </div>
+      <div class="analytics-section">
+        <div class="analytics-title">Mitigation Effectiveness</div>
+        <div id="mitig-effectiveness"><div style="font-size:11px;color:var(--text3);">No data yet</div></div>
+      </div>
+      <div class="analytics-section">
+        <div class="analytics-title">Spread by Vector</div>
+        <div id="vector-spread"><div style="font-size:11px;color:var(--text3);">No data yet</div></div>
+      </div>
+      <div class="analytics-section">
+        <div class="analytics-title">Decoy Intelligence</div>
+        <div id="decoy-analytics"><div style="font-size:11px;color:var(--text3);">No decoy events</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CANVAS -->
+  <div id="canvas-area">
+    <div id="canvas-bg"></div>
+    <div id="canvas-toolbar">
+      <button class="ctool-btn active" id="tool-select" onclick="setTool('select')">⬡ Select</button>
+      <button class="ctool-btn" id="tool-pan" onclick="setTool('pan')">✥ Pan</button>
+      <button class="ctool-btn" onclick="fitView()">⊡ Fit</button>
+      <button class="ctool-btn" onclick="zoomIn()">+</button>
+      <button class="ctool-btn" onclick="zoomOut()">−</button>
+    </div>
+    <canvas id="netcanvas"></canvas>
+    <div id="replay-bar">
+      <span style="font-family:var(--font-mono);font-size:11px;color:var(--cyan);">⏮ REPLAY</span>
+      <button class="replay-btn" id="rb-play" onclick="replayPlayPause()">▶</button>
+      <button class="replay-btn" onclick="replayStep(-1)">◀</button>
+      <input type="range" id="replay-slider" min="0" value="0" oninput="replaySeek(parseInt(this.value))">
+      <button class="replay-btn" onclick="replayStep(1)">▶</button>
+      <span id="replay-tick-label">T0/T0</span>
+      <button class="replay-btn" onclick="toggleReplayMode()">✕</button>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div id="right-panel">
+    <div class="panel-title" style="padding:9px 14px;flex-shrink:0;">Node Inspector</div>
+    <div id="detail-panel"><div class="detail-empty"><div class="icon">⬡</div><div>Select a node to inspect</div></div></div>
+    <div id="sim-log">
+      <div class="panel-title" style="padding:5px 10px;">Simulation Log</div>
+      <div id="log-entries"></div>
+      <div id="log-toolbar">
+        <button class="lfbtn active" onclick="setLogFilter('all',this)">ALL</button>
+        <button class="lfbtn" onclick="setLogFilter('crit',this)">INFECT</button>
+        <button class="lfbtn" onclick="setLogFilter('mitig',this)">BLOCK</button>
+        <button class="lfbtn" onclick="setLogFilter('decoy',this)">DECOY</button>
+        <button class="lexbtn" onclick="exportLog('csv')">CSV ↓</button>
+        <button class="lexbtn" onclick="exportLog('json')">JSON ↓</button>
+      </div>
+    </div>
+    <div id="speed-row">
+      <label>Speed</label>
+      <input type="range" id="sim-speed" min="1" max="10" value="5" oninput="document.getElementById('speed-val').textContent=this.value+'x'">
+      <div id="speed-val">5x</div>
+    </div>
+  </div>
+</div>
+
+<div id="ctx-menu">
+  <div class="ctx-item" onclick="ctxSetPatient()">☠ Set as Patient Zero</div>
+  <div class="ctx-item" onclick="ctxToggleVuln()">⚠ Toggle Vulnerable</div>
+  <div class="ctx-item" onclick="ctxIsolate()">⛔ Isolate Node</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" onclick="ctxAddCreds()">🔑 Toggle Stolen Creds</div>
+  <div class="ctx-item" onclick="ctxAddAdmin()">👑 Mark as Admin</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item decoy-act" onclick="ctxToggleDecoy()">🍯 Toggle Decoy</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item danger" onclick="ctxDelete()">✕ Delete Node</div>
+</div>
+
+<div id="modal-overlay">
+  <div id="modal">
+    <h3 id="modal-title">Export</h3>
+    <textarea id="modal-data" spellcheck="false"></textarea>
+    <div class="modal-btns">
+      <button class="btn-primary" id="modal-action-btn" style="flex:1;margin-top:0;" onclick="modalAction()">Copy</button>
+      <button class="btn-secondary" onclick="closeModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════
+// STATE
+// ═══════════════════════════════════
+const S = {
+  nodes:[],edges:[],subnets:[],
+  selected:null,simRunning:false,simTimer:null,simTick:0,
+  tool:'select',
+  camX:0,camY:0,camZ:1,
+  dragging:false,dragNode:null,nodeDragOX:0,nodeDragOY:0,
+  panning:false,panStartX:0,panStartY:0,panCamX:0,panCamY:0,
+  replayMode:false,replayTick:0,replayPlaying:false,replayTimer:null,
+};
+
+const simLog = [];      // structured event log
+const mitigStats = {};  // id → block count
+const vectorStats = {}; // proto → infection count
+const decoyAlerts = []; // {tick,decoyId,decoyLabel,attackerId,attackerLabel,protocol}
+const replaySnaps = []; // {tick,nodeStates,edgeStates}
+
+let nodeIdSeq = 0;
+let contextNode = null;
+let modalMode = 'export';
+let logFilter = 'all';
+
+const VECTORS = [
+  {id:'creds',  name:'Stolen Creds',  sev:'critical',on:true},
+  {id:'smb',    name:'SMB',           sev:'critical',on:true},
+  {id:'wmi',    name:'WMI',           sev:'high',    on:true},
+  {id:'winrm',  name:'WinRM',         sev:'high',    on:false},
+  {id:'rmm',    name:'RMM',           sev:'high',    on:true},
+  {id:'http',   name:'HTTP/Web',      sev:'medium',  on:false},
+  {id:'hyperv', name:'HyperV Escape', sev:'critical',on:false},
+];
+
+const MITIGATIONS = [
+  {id:'mfa',       label:'MFA Enforced',         on:false},
+  {id:'edr',       label:'EDR/AV Active',         on:false},
+  {id:'segmented', label:'Network Segmentation',  on:false},
+  {id:'pam',       label:'PAM / Least Privilege', on:false},
+  {id:'wmi-off',   label:'WMI Disabled',          on:false},
+  {id:'winrm-off', label:'WinRM Disabled',        on:false},
+  {id:'smb-sign',  label:'SMB Signing',           on:false},
+  {id:'rmm-ctrl',  label:'RMM Access Control',    on:false},
+  {id:'backup',    label:'Immutable Backups',     on:false},
+];
+
+const DECOY_TYPES = [
+  {id:'honeypot-ws',   label:'Honeypot Workstation',on:true},
+  {id:'honeypot-share',label:'Fake File Share',      on:true},
+  {id:'honey-creds',   label:'Honey Credentials',    on:true},
+  {id:'honey-svc',     label:'Fake Service Account', on:false},
+];
+
+const NT = {
+  workstation:{icon:'💻',color:'#58a6ff'},laptop:{icon:'🖥️',color:'#bc8cff'},
+  server:{icon:'🗄️',color:'#3fb950'},dc:{icon:'🏛️',color:'#d29922'},
+  edge:{icon:'🌐',color:'#39d353'},iot:{icon:'📺',color:'#8b949e'},
+  hyperv:{icon:'⬡',color:'#58a6ff'},vm:{icon:'□',color:'#388bfd'},
+  decoy:{icon:'🍯',color:'#ff7ab2'},
+};
+
+const SN_COLORS = ['rgba(88,166,255,.06)','rgba(63,185,80,.06)','rgba(210,153,34,.06)',
+  'rgba(188,140,255,.06)','rgba(57,211,83,.06)','rgba(248,81,73,.06)'];
+
+// ═══════════════════════════════════
+// CANVAS
+// ═══════════════════════════════════
+const canvas = document.getElementById('netcanvas');
+const ctx = canvas.getContext('2d');
+
+function resize(){const a=document.getElementById('canvas-area');canvas.width=a.offsetWidth;canvas.height=a.offsetHeight;draw();}
+window.addEventListener('resize',resize);
+
+function w2s(wx,wy){return{x:wx*S.camZ+S.camX,y:wy*S.camZ+S.camY};}
+function s2w(sx,sy){return{x:(sx-S.camX)/S.camZ,y:(sy-S.camY)/S.camZ};}
+
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.save();ctx.translate(S.camX,S.camY);ctx.scale(S.camZ,S.camZ);
+  const t=Date.now();
+
+  for(const sn of S.subnets){
+    ctx.beginPath();ctx.ellipse(sn.cx,sn.cy,sn.rx,sn.ry,0,0,Math.PI*2);
+    ctx.fillStyle=sn.color;ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,.06)';ctx.lineWidth=1.5;
+    ctx.setLineDash([6,4]);ctx.stroke();ctx.setLineDash([]);
+    if(S.camZ>0.2){ctx.fillStyle='rgba(255,255,255,.15)';ctx.font='500 11px "IBM Plex Sans"';ctx.fillText(sn.name,sn.cx-sn.name.length*3,sn.cy-sn.ry+16);}
+  }
+
+  for(const e of S.edges){
+    const s=S.nodes.find(n=>n.id===e.src),d=S.nodes.find(n=>n.id===e.dst);
+    if(!s||!d) continue;
+    ctx.beginPath();ctx.moveTo(s.x,s.y);ctx.lineTo(d.x,d.y);
+    if(e.decoyHit){ctx.strokeStyle='rgba(255,122,178,.9)';ctx.lineWidth=2.5;ctx.setLineDash([]);}
+    else if(e.active){ctx.strokeStyle='rgba(248,81,73,.75)';ctx.lineWidth=2;ctx.setLineDash([]);}
+    else{ctx.strokeStyle='rgba(72,79,88,.45)';ctx.lineWidth=1;ctx.setLineDash([3,5]);}
+    ctx.stroke();ctx.setLineDash([]);
+  }
+
+  const r=Math.max(5,Math.min(12,10/S.camZ*0.6+4));
+  for(const n of S.nodes){
+    const sx=n.x,sy=n.y;
+    if(n.isDecoy){
+      const p=Math.abs(Math.sin(t/600+n.id*0.9));
+      const gr=ctx.createRadialGradient(sx,sy,r,sx,sy,r+12);
+      gr.addColorStop(0,'rgba(255,122,178,'+(0.15+p*0.25)+')');gr.addColorStop(1,'rgba(255,122,178,0)');
+      ctx.beginPath();ctx.arc(sx,sy,r+12,0,Math.PI*2);ctx.fillStyle=gr;ctx.fill();
+      if(n.decoyAlert){ctx.beginPath();ctx.arc(sx,sy,r+5+Math.sin(t/200)*2.5,0,Math.PI*2);ctx.strokeStyle='rgba(255,122,178,.8)';ctx.lineWidth=2;ctx.stroke();}
+    }
+    if(n.infected){
+      const gr=r+8+Math.sin(t/300+n.id*0.7)*3;
+      const grd=ctx.createRadialGradient(sx,sy,r,sx,sy,gr);
+      grd.addColorStop(0,'rgba(248,81,73,.4)');grd.addColorStop(1,'rgba(248,81,73,0)');
+      ctx.beginPath();ctx.arc(sx,sy,gr,0,Math.PI*2);ctx.fillStyle=grd;ctx.fill();
+    }
+    if(n.isolated){ctx.beginPath();ctx.arc(sx,sy,r+5,0,Math.PI*2);ctx.strokeStyle='rgba(88,166,255,.5)';ctx.lineWidth=1.5;ctx.setLineDash([2,3]);ctx.stroke();ctx.setLineDash([]);}
+    ctx.beginPath();ctx.arc(sx,sy,r,0,Math.PI*2);
+    let fill=n.isDecoy?(n.decoyAlert?'#ff7ab2':'#7a2d4f'):n.infected?'#f85149':n.isolated?'#30363d':n.status==='vulnerable'?'#d29922':(NT[n.type]?.color||'#8b949e');
+    ctx.fillStyle=fill;ctx.fill();
+    ctx.strokeStyle=S.selected===n.id?'#fff':'rgba(0,0,0,.4)';ctx.lineWidth=S.selected===n.id?2:1;ctx.stroke();
+    if(S.camZ>0.35){ctx.fillStyle='rgba(230,237,243,.7)';ctx.font='9px "IBM Plex Mono"';ctx.textAlign='center';ctx.fillText(n.label.substring(0,14),sx,sy+r+10);ctx.textAlign='left';}
+    if(n.hasCreds){ctx.font='9px sans-serif';ctx.textAlign='center';ctx.fillText('🔑',sx+r-1,sy-r+3);ctx.textAlign='left';}
+  }
+  ctx.restore();
+}
+
+requestAnimationFrame(function loop(){draw();requestAnimationFrame(loop);});
+
+// ═══════════════════════════════════
+// GENERATE
+// ═══════════════════════════════════
+const PRESETS={smb:{ws:30,lp:15,sv:6,ed:3,iot:4,sub:2,hv:1,d:3},hospital:{ws:80,lp:40,sv:12,ed:8,iot:20,sub:5,hv:3,d:6},campus:{ws:200,lp:100,sv:20,ed:10,iot:30,sub:8,hv:4,d:10},datacenter:{ws:10,lp:5,sv:50,ed:6,iot:2,sub:4,hv:8,d:8},factory:{ws:20,lp:10,sv:8,ed:15,iot:40,sub:4,hv:2,d:5}};
+function applyPreset(n){const p=PRESETS[n];document.getElementById('g-ws').value=p.ws;document.getElementById('g-lp').value=p.lp;document.getElementById('g-sv').value=p.sv;document.getElementById('g-ed').value=p.ed;document.getElementById('g-iot').value=p.iot;document.getElementById('g-sub').value=p.sub;document.getElementById('g-hv').value=p.hv;document.getElementById('g-decoy').value=p.d;}
+
+function generateNetwork(){
+  const ws=Math.min(5000,+document.getElementById('g-ws').value||0);
+  const lp=Math.min(5000,+document.getElementById('g-lp').value||0);
+  const sv=Math.min(1000,+document.getElementById('g-sv').value||0);
+  const ed=Math.min(500, +document.getElementById('g-ed').value||0);
+  const iot=Math.min(500,+document.getElementById('g-iot').value||0);
+  const subs=Math.min(50, +document.getElementById('g-sub').value||1);
+  const hv=Math.min(100, +document.getElementById('g-hv').value||0);
+  const dc=Math.min(100, +document.getElementById('g-decoy').value||0);
+  const layout=document.getElementById('g-layout').value;
+  const total=ws+lp+sv+ed+iot+hv+dc;
+  if(total===0){addLog({type:'warn',msg:'No nodes configured'});return;}
+  if(total>10000){addLog({type:'warn',msg:'Max 10,000 nodes'});return;}
+
+  S.nodes=[];S.edges=[];S.subnets=[];S.selected=null;nodeIdSeq=0;
+  simLog.length=0;replaySnaps.length=0;decoyAlerts.length=0;
+  Object.keys(mitigStats).forEach(k=>delete mitigStats[k]);
+  Object.keys(vectorStats).forEach(k=>delete vectorStats[k]);
+
+  const W=2400,H=1600;
+  const snDefs=[];
+  const snNames=['Corp LAN','DMZ','OT Network','Guest WiFi','DC Segment','Management','IoT VLAN','Cloud VPC','HR VLAN','Servers'];
+  for(let i=0;i<subs;i++){
+    const a=(i/subs)*Math.PI*2,dist=subs===1?0:Math.min(W,H)*0.28;
+    snDefs.push({id:i,name:snNames[i]||('VLAN-'+(i+1)),cx:W/2+Math.cos(a)*dist,cy:H/2+Math.sin(a)*dist,rx:Math.max(180,W/(subs+1)*0.7),ry:Math.max(140,H/(subs+1)*0.6),color:SN_COLORS[i%SN_COLORS.length]});
+    S.subnets.push(snDefs[i]);
+  }
+
+  function ri(sn){const a=Math.random()*Math.PI*2,d=Math.random()*0.85;return{x:sn.cx+Math.cos(a)*sn.rx*d,y:sn.cy+Math.sin(a)*sn.ry*d};}
+  function addN(type,label,si,extra){
+    const sn=snDefs[si%snDefs.length],p=ri(sn);
+    const n={id:nodeIdSeq++,type,label,x:p.x,y:p.y,subnet:sn.id,status:Math.random()<0.25?'vulnerable':'safe',roles:[],infected:false,isolated:false,hasCreds:false,isDecoy:false,decoyAlert:false};
+    Object.assign(n,extra||{});S.nodes.push(n);return n;
+  }
+
+  const servers=[],dcs=[],hvHosts=[];
+  for(let i=0;i<sv;i++){const isDC=i<Math.max(1,Math.floor(sv*0.2));const sn=isDC?0:Math.floor(Math.random()*subs);const n=addN(isDC?'dc':'server',isDC?'DC-'+(i+1):'SRV-'+(i+1),sn,{roles:isDC?['DomainController']:['FileServer'],status:isDC?'safe':(Math.random()<0.3?'vulnerable':'safe')});if(isDC) dcs.push(n);else servers.push(n);}
+  for(let i=0;i<hv;i++){const n=addN('hyperv','HV-'+(i+1),Math.floor(Math.random()*subs),{roles:['HyperVHost']});hvHosts.push(n);for(let v=0;v<2+Math.floor(Math.random()*3);v++) addN('vm','VM-'+(i+1)+'.'+(v+1),n.subnet,{roles:['VM'],parentHV:n.id});}
+
+  const dLabels=['WS-ADMIN','SRV-BACKUP','SHARE-HR','ADMIN-PC','DB-TEST','MGMT-01','INFRA-SVC','TEMP-WS'];
+  for(let i=0;i<dc;i++) addN('decoy',dLabels[i%dLabels.length]+(i>=dLabels.length?'-'+Math.ceil((i-dLabels.length+1)/dLabels.length+1):''),Math.floor(Math.random()*subs),{isDecoy:true,roles:['Decoy'],hasCreds:Math.random()<0.5});
+
+  const P=['smb','wmi','winrm','http','rmm'],all=S.nodes;
+  for(const srv of [...servers,...dcs]){const ws2=all.filter(n=>n.type==='workstation'||n.type==='laptop').sort(()=>Math.random()-.5).slice(0,8);for(const w of ws2) S.edges.push({id:nodeIdSeq++,src:srv.id,dst:w.id,protocol:'smb',active:false,decoyHit:false});}
+  for(const hv of hvHosts){for(const vm of all.filter(n=>n.parentHV===hv.id)) S.edges.push({id:nodeIdSeq++,src:hv.id,dst:vm.id,protocol:'hyperv',active:false,decoyHit:false});}
+  for(const d of all.filter(n=>n.isDecoy)){const peers=all.filter(n=>!n.isDecoy&&n.subnet===d.subnet).slice(0,4);for(const p of peers) S.edges.push({id:nodeIdSeq++,src:d.id,dst:p.id,protocol:P[Math.floor(Math.random()*3)],active:false,decoyHit:false});}
+  const lc=Math.min(total*1.5,8000);
+  for(let i=0;i<lc;i++){const a=all[Math.floor(Math.random()*all.length)],b=all[Math.floor(Math.random()*all.length)];if(a.id!==b.id) S.edges.push({id:nodeIdSeq++,src:a.id,dst:b.id,protocol:P[Math.floor(Math.random()*P.length)],active:false,decoyHit:false});}
+
+  for(let i=0;i<Math.max(1,Math.floor(total*0.05));i++) all[Math.floor(Math.random()*all.length)].hasCreds=true;
+
+  if(layout==='hierarchical'){for(const n of S.nodes){if(n.type==='dc') n.y=100+Math.random()*80;else if(n.type==='server'||n.type==='hyperv') n.y=250+Math.random()*140;else if(n.type==='edge') n.y=1450+Math.random()*100;else n.y=500+Math.random()*800;}}
+  else if(layout==='ring'){S.nodes.forEach((n,i)=>{const a=(i/S.nodes.length)*Math.PI*2,r=300+Math.random()*400;n.x=1200+Math.cos(a)*r;n.y=800+Math.sin(a)*r;});}
+
+  fitView();updateStats();renderObjList();renderDecoyTypeList();
+  addLog({type:'ok',msg:'Generated '+total+' nodes, '+S.edges.length+' edges'});
+}
+
+// ═══════════════════════════════════
+// SEEDS
+// ═══════════════════════════════════
+function applySeed(seed){
+  resetInfection();
+  const all=S.nodes.filter(n=>!n.isDecoy);
+  let t=null;
+  if(seed==='phish') t=all.find(n=>n.type==='workstation'||n.type==='laptop');
+  else if(seed==='supply') t=all.find(n=>n.type==='edge');
+  else if(seed==='insider') t=all.find(n=>n.type==='server');
+  else if(seed==='rdp') t=all.find(n=>n.type==='dc');
+  else if(seed==='iot') t=all.find(n=>n.type==='iot');
+  if(!t) t=all[0];if(!t) return;
+  t.infected=true;
+  if(seed==='phish'||seed==='insider') t.hasCreds=true;
+  if(seed==='insider') t.roles.push('Admin');
+  addLog({type:'crit',tick:0,msg:'Seed ['+seed+']: patient zero → '+t.label});
+  updateStats();draw();
+}
+
+// ═══════════════════════════════════
+// SIMULATION
+// ═══════════════════════════════════
+function toggleSim(){S.simRunning?stopSim():startSim();}
+
+function startSim(){
+  if(S.replayMode) toggleReplayMode();
+  const pz=S.nodes.find(n=>n.infected);
+  if(!pz){
+    if(!S.nodes.length){addLog({type:'warn',msg:'Generate a network first'});return;}
+    const pool=S.nodes.filter(n=>!n.isDecoy);
+    if(!pool.length) return;
+    pool[Math.floor(Math.random()*pool.length)].infected=true;
+  }
+  S.simRunning=true;S.simTick=0;
+  document.getElementById('btn-run').textContent='⏹ Stop';
+  document.getElementById('btn-run').classList.add('running');
+  scheduleSimTick();
+}
+
+function stopSim(){
+  S.simRunning=false;clearTimeout(S.simTimer);
+  document.getElementById('btn-run').textContent='▶ Run Sim';
+  document.getElementById('btn-run').classList.remove('running');
+  addLog({type:'info',tick:S.simTick,msg:'Stopped at T'+S.simTick});
+  renderAnalytics();
+}
+
+function resetSim(){
+  stopSim();
+  for(const n of S.nodes){n.infected=false;n.isolated=false;n.decoyAlert=false;}
+  for(const e of S.edges){e.active=false;e.decoyHit=false;}
+  S.simTick=0;simLog.length=0;replaySnaps.length=0;decoyAlerts.length=0;
+  Object.keys(mitigStats).forEach(k=>mitigStats[k]=0);
+  Object.keys(vectorStats).forEach(k=>vectorStats[k]=0);
+  updateStats();clearLogUI();renderMitigations();renderAnalytics();draw();
+}
+
+function scheduleSimTick(){
+  if(!S.simRunning) return;
+  const spd=+document.getElementById('sim-speed').value;
+  S.simTimer=setTimeout(()=>{simStep();scheduleSimTick();},Math.max(50,1200-spd*110));
+}
+
+function snapState(){
+  replaySnaps.push({tick:S.simTick,
+    nodeStates:S.nodes.map(n=>({id:n.id,infected:n.infected,isolated:n.isolated,decoyAlert:n.decoyAlert,hasCreds:n.hasCreds})),
+    edgeStates:S.edges.map(e=>({id:e.id,active:e.active,decoyHit:e.decoyHit}))});
+}
+
+function simStep(){
+  S.simTick++;
+  snapState();
+
+  const mmap={};for(const m of MITIGATIONS) mmap[m.id]=m.on;
+  const vec=VECTORS.filter(v=>v.on);
+  const infected=S.nodes.filter(n=>n.infected&&!n.isolated);
+  if(!infected.length){stopSim();addLog({type:'ok',tick:S.simTick,msg:'All infection paths exhausted'});return;}
+
+  const sens=document.getElementById('decoy-sensitivity').value;
+  const resp=document.getElementById('decoy-response').value;
+  const dp=sens==='low'?0.3:sens==='medium'?0.6:0.9;
+  let newInf=0;
+
+  for(const src of infected){
+    const edges=S.edges.filter(e=>e.src===src.id||e.dst===src.id);
+    for(const edge of edges){
+      const tgtId=edge.src===src.id?edge.dst:edge.src;
+      const tgt=S.nodes.find(n=>n.id===tgtId);
+      if(!tgt||tgt.infected||tgt.isolated) continue;
+      const proto=edge.protocol;
+      if(!vec.some(v=>v.id===proto)) continue;
+
+      // DECOY
+      if(tgt.isDecoy){
+        if(Math.random()<dp){
+          tgt.decoyAlert=true;edge.decoyHit=true;
+          decoyAlerts.push({tick:S.simTick,decoyId:tgt.id,decoyLabel:tgt.label,attackerId:src.id,attackerLabel:src.label,protocol:proto});
+          addLog({type:'decoy',tick:S.simTick,src:src.label,dst:tgt.label,protocol:proto,blocked:false,blockReason:'decoy',decoyHit:true,
+            msg:'🍯 DECOY: '+src.label+' → '+tgt.label+' via '+proto.toUpperCase()});
+          if(resp==='isolate'||resp==='quarantine'){
+            src.isolated=true;src.infected=false;
+            addLog({type:'mitig',tick:S.simTick,blocked:true,blockReason:'decoy-isolate',msg:'⛔ Attacker isolated (decoy): '+src.label});
+            bump(mitigStats,'decoy-isolate');
+          }
+          if(resp==='quarantine'){
+            const nids=S.edges.filter(e=>e.src===src.id||e.dst===src.id).map(e=>e.src===src.id?e.dst:e.src).slice(0,3);
+            for(const nid of nids){const nn=S.nodes.find(x=>x.id===nid);if(nn&&!nn.isDecoy){nn.isolated=true;nn.infected=false;}}
+            addLog({type:'mitig',tick:S.simTick,blocked:true,blockReason:'quarantine',msg:'⛔ Quarantine zone: '+src.label});
+          }
+        }
+        continue;
+      }
+
+      let prob=0.15;
+      if(tgt.status==='vulnerable') prob+=0.3;
+      if(tgt.hasCreds||src.hasCreds) prob+=0.25;
+      if(proto==='hyperv') prob+=0.4;
+
+      const blockers=[];
+      if(mmap['edr']){prob-=0.2;bump(mitigStats,'edr');}
+      if(mmap['segmented']&&tgt.subnet!==src.subnet){prob-=0.4;blockers.push('segment');bump(mitigStats,'segmented');}
+      if(mmap['smb-sign']&&proto==='smb'){prob-=0.35;blockers.push('smb-sign');bump(mitigStats,'smb-sign');}
+      if(mmap['winrm-off']&&proto==='winrm'){prob=0;blockers.push('winrm-off');bump(mitigStats,'winrm-off');}
+      if(mmap['wmi-off']&&proto==='wmi'){prob=0;blockers.push('wmi-off');bump(mitigStats,'wmi-off');}
+      if(mmap['pam']&&(tgt.roles.includes('DomainController')||tgt.hasCreds)){prob-=0.3;blockers.push('pam');bump(mitigStats,'pam');}
+      if(mmap['mfa']&&vec.some(v=>v.id==='creds')){prob-=0.25;blockers.push('mfa');bump(mitigStats,'mfa');}
+      if(mmap['rmm-ctrl']&&proto==='rmm'){prob-=0.5;blockers.push('rmm-ctrl');bump(mitigStats,'rmm-ctrl');}
+      prob=Math.max(0,Math.min(1,prob));
+
+      if(Math.random()<prob){
+        tgt.infected=true;edge.active=true;newInf++;
+        bump(vectorStats,proto);
+        addLog({type:'crit',tick:S.simTick,src:src.label,dst:tgt.label,protocol:proto,blocked:false,blockReason:'',decoyHit:false,
+          msg:'T'+S.simTick+': '+src.label+' → '+tgt.label+' ['+proto.toUpperCase()+']'});
+        if(tgt.hasCreds&&Math.random()<0.4) src.hasCreds=true;
+        if(tgt.type==='server'||tgt.type==='dc') addLog({type:'warn',tick:S.simTick,msg:'⚠ Encrypted: '+tgt.label});
+      } else if(blockers.length){
+        addLog({type:'mitig',tick:S.simTick,src:src.label,dst:tgt.label,protocol:proto,blocked:true,blockReason:blockers.join('+'),decoyHit:false,
+          msg:'T'+S.simTick+': BLOCKED '+src.label+' → '+tgt.label+' ['+blockers.join('+')+']'});
+      }
+      if(newInf>50) break;
+    }
+    if(newInf>50) break;
+  }
+
+  if(newInf===0&&S.simTick>2){addLog({type:'ok',tick:S.simTick,msg:'Contained — no further spread'});stopSim();}
+  updateStats();renderMitigations();
+  if(S.selected) renderDetail(S.selected);
+}
+
+function bump(obj,k){obj[k]=(obj[k]||0)+1;}
+
+// ═══════════════════════════════════
+// REPLAY
+// ═══════════════════════════════════
+function toggleReplayMode(){
+  S.replayMode=!S.replayMode;
+  const bar=document.getElementById('replay-bar'),btn=document.getElementById('btn-replay');
+  if(S.replayMode){
+    if(S.simRunning) stopSim();
+    if(!replaySnaps.length){addLog({type:'warn',msg:'Run a simulation first'});S.replayMode=false;return;}
+    bar.classList.add('visible');btn.classList.add('replay-active');btn.textContent='⏮ Exit Replay';
+    const sl=document.getElementById('replay-slider');sl.max=replaySnaps.length-1;sl.value=replaySnaps.length-1;
+    S.replayTick=replaySnaps.length-1;applySnap(S.replayTick);
+  } else {
+    bar.classList.remove('visible');btn.classList.remove('replay-active');btn.textContent='⏮ Replay';
+    stopReplayPlay();if(replaySnaps.length) applySnap(replaySnaps.length-1);
+  }
+}
+
+function applySnap(idx){
+  if(idx<0||idx>=replaySnaps.length) return;
+  const snap=replaySnaps[idx];
+  for(const ns of snap.nodeStates){const n=S.nodes.find(x=>x.id===ns.id);if(n){n.infected=ns.infected;n.isolated=ns.isolated;n.decoyAlert=ns.decoyAlert;n.hasCreds=ns.hasCreds;}}
+  for(const es of snap.edgeStates){const e=S.edges.find(x=>x.id===es.id);if(e){e.active=es.active;e.decoyHit=es.decoyHit;}}
+  document.getElementById('replay-tick-label').textContent='T'+snap.tick+'/'+'T'+(replaySnaps[replaySnaps.length-1]?.tick||0);
+  updateStats();draw();
+}
+
+function replaySeek(val){S.replayTick=val;applySnap(S.replayTick);}
+function replayStep(dir){S.replayTick=Math.max(0,Math.min(replaySnaps.length-1,S.replayTick+dir));document.getElementById('replay-slider').value=S.replayTick;applySnap(S.replayTick);}
+
+function replayPlayPause(){
+  const btn=document.getElementById('rb-play');
+  if(S.replayPlaying){stopReplayPlay();}
+  else{S.replayPlaying=true;btn.textContent='⏸';btn.classList.add('ractive');if(S.replayTick>=replaySnaps.length-1) S.replayTick=0;replayAdv();}
+}
+function stopReplayPlay(){S.replayPlaying=false;clearTimeout(S.replayTimer);document.getElementById('rb-play').textContent='▶';document.getElementById('rb-play').classList.remove('ractive');}
+function replayAdv(){
+  if(!S.replayPlaying) return;
+  S.replayTick++;
+  if(S.replayTick>=replaySnaps.length){stopReplayPlay();S.replayTick=replaySnaps.length-1;return;}
+  document.getElementById('replay-slider').value=S.replayTick;applySnap(S.replayTick);
+  const spd=+document.getElementById('sim-speed').value;
+  S.replayTimer=setTimeout(replayAdv,Math.max(80,800-spd*70));
+}
+
+// ═══════════════════════════════════
+// ANALYTICS
+// ═══════════════════════════════════
+function renderAnalytics(){
+  const inf=S.nodes.filter(n=>n.infected).length;
+  const blocked=simLog.filter(e=>e.blocked).length;
+  const dHits=decoyAlerts.length;
+
+  document.getElementById('analytics-summary').innerHTML=
+    '<div class="summary-card"><div class="summary-card-val" style="color:var(--red)">'+inf+'</div><div class="summary-card-label">Infected</div></div>'+
+    '<div class="summary-card"><div class="summary-card-val" style="color:var(--green)">'+blocked+'</div><div class="summary-card-label">Blocked</div></div>'+
+    '<div class="summary-card"><div class="summary-card-val" style="color:var(--pink)">'+dHits+'</div><div class="summary-card-label">Decoy Hits</div></div>'+
+    '<div class="summary-card"><div class="summary-card-val" style="color:var(--blue)">'+S.simTick+'</div><div class="summary-card-label">Ticks</div></div>';
+
+  const meff=document.getElementById('mitig-effectiveness');
+  const total=Math.max(1,simLog.length);
+  let mhtml='';
+  for(const m of MITIGATIONS){
+    if(!m.on) continue;
+    const c=mitigStats[m.id]||0;
+    const w=c>0?Math.max(8,Math.min(100,Math.round(c/total*200)))+'%':'0%';
+    const col=c>0?'var(--green)':'var(--text3)';
+    mhtml+='<div class="mitig-score-row"><span class="mitig-score-label">'+m.label+'</span><div class="mitig-bar-wrap"><div class="mitig-bar-fill" style="width:'+w+';background:'+col+'"></div></div><span class="mitig-score-val">'+c+'x</span></div>';
+  }
+  if(!mhtml) mhtml='<div style="font-size:11px;color:var(--text3)">No mitigations enabled</div>';
+  meff.innerHTML=mhtml;
+
+  const vs=document.getElementById('vector-spread');
+  const tv=Math.max(1,Object.values(vectorStats).reduce((a,b)=>a+b,0));
+  let vhtml='';
+  for(const [proto,cnt] of Object.entries(vectorStats)){
+    const v=VECTORS.find(x=>x.id===proto);
+    const col=v?.sev==='critical'?'var(--red)':v?.sev==='high'?'var(--orange)':'var(--blue)';
+    vhtml+='<div class="vsrow"><span style="font-size:11px;color:var(--text2)">'+proto.toUpperCase()+'</span><span style="font-family:var(--font-mono);font-size:11px;color:'+col+'">'+cnt+' ('+Math.round(cnt/tv*100)+'%)</span></div>';
+  }
+  if(!vhtml) vhtml='<div style="font-size:11px;color:var(--text3)">No vector data</div>';
+  vs.innerHTML=vhtml;
+
+  const da=document.getElementById('decoy-analytics');
+  let dhtml='<div class="kv-row"><span class="kv-key">Total alerts</span><span class="kv-val" style="color:var(--pink)">'+decoyAlerts.length+'</span></div>';
+  const bp={};for(const a of decoyAlerts) bp[a.protocol]=(bp[a.protocol]||0)+1;
+  for(const [p,c] of Object.entries(bp)) dhtml+='<div class="kv-row"><span class="kv-key">via '+p.toUpperCase()+'</span><span class="kv-val">'+c+'</span></div>';
+  dhtml+='<div class="kv-row"><span class="kv-key">Unique attackers caught</span><span class="kv-val">'+new Set(decoyAlerts.map(a=>a.attackerId)).size+'</span></div>';
+  da.innerHTML=dhtml;
+}
+
+// ═══════════════════════════════════
+// LOG
+// ═══════════════════════════════════
+function addLog(entry){
+  if(entry.tick==null) entry.tick=S.simTick;
+  entry.wallTime=new Date().toISOString();
+  simLog.push(entry);
+  if(logFilter==='all'||logFilter===entry.type) appendLogUI(entry);
+}
+
+function appendLogUI(e){
+  const el=document.getElementById('log-entries');
+  if(el.children.length>800) el.removeChild(el.firstChild);
+  const row=document.createElement('div');row.className='log-entry';
+  const t=new Date(e.wallTime||Date.now());
+  const ts=t.getHours().toString().padStart(2,'0')+':'+t.getMinutes().toString().padStart(2,'0')+':'+t.getSeconds().toString().padStart(2,'0');
+  row.innerHTML='<span class="log-time">'+ts+'</span><span class="log-tick">T'+e.tick+'</span><span class="log-'+e.type+'">'+e.msg+'</span>';
+  el.appendChild(row);el.scrollTop=el.scrollHeight;
+}
+
+function clearLogUI(){document.getElementById('log-entries').innerHTML='';}
+
+function setLogFilter(f,btn){
+  logFilter=f;document.querySelectorAll('.lfbtn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
+  clearLogUI();for(const e of simLog){if(f==='all'||f===e.type) appendLogUI(e);}
+}
+
+function exportLog(fmt){
+  let content,fn,mime;
+  if(fmt==='csv'){
+    const h='tick,wallTime,type,src,dst,protocol,blocked,blockReason,decoyHit,msg';
+    const rows=simLog.map(e=>[e.tick,e.wallTime||'',e.type,e.src||'',e.dst||'',e.protocol||'',e.blocked?'1':'0',e.blockReason||'',e.decoyHit?'1':'0','"'+(e.msg||'').replace(/"/g,"''")+'"'].join(','));
+    content=h+'\n'+rows.join('\n');fn='ransomware-sim-log.csv';mime='text/csv';
+  } else {
+    content=JSON.stringify({simulationTicks:S.simTick,exportedAt:new Date().toISOString(),networkSize:S.nodes.length,infectedCount:S.nodes.filter(n=>n.infected).length,vectorStats,mitigationStats:mitigStats,decoyAlerts,events:simLog},null,2);
+    fn='ransomware-sim-log.json';mime='application/json';
+  }
+  const blob=new Blob([content],{type:mime}),url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download=fn;a.click();URL.revokeObjectURL(url);
+  addLog({type:'ok',msg:'Exported '+fn});
+}
+
+// ═══════════════════════════════════
+// STATS & UI
+// ═══════════════════════════════════
+function updateStats(){
+  const t=S.nodes.length,inf=S.nodes.filter(n=>n.infected).length,dc=S.nodes.filter(n=>n.isDecoy).length;
+  const vuln=S.nodes.filter(n=>n.status==='vulnerable'&&!n.infected&&!n.isDecoy).length;
+  document.getElementById('stat-total').textContent=t;
+  document.getElementById('stat-inf').textContent=inf;
+  document.getElementById('stat-vuln').textContent=vuln;
+  document.getElementById('stat-safe').textContent=Math.max(0,t-inf-vuln-dc);
+  document.getElementById('stat-decoy').textContent=dc;
+}
+
+function setTab(name){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>{if(t.textContent.toLowerCase().includes(name)) t.classList.add('active');});
+  document.getElementById('tab-design').style.display=name==='design'?'flex':'none';
+  document.getElementById('tab-simulate').style.display=name==='simulate'?'flex':'none';
+  document.getElementById('tab-objects').style.display=name==='objects'?'flex':'none';
+  document.getElementById('tab-analytics').style.display=name==='analytics'?'flex':'none';
+  if(name==='objects') renderObjList();
+  if(name==='analytics') renderAnalytics();
+}
+
+function renderVectors(){
+  document.getElementById('vector-list').innerHTML=VECTORS.map(v=>
+    '<div class="vector-item"><button class="vector-toggle '+(v.on?'on':'')+'" onclick="toggleVector(\''+v.id+'\')"></button><span class="vector-name">'+v.name+'</span><span class="vector-severity sev-'+v.sev+'">'+v.sev.slice(0,4).toUpperCase()+'</span></div>'
+  ).join('');
+}
+function toggleVector(id){const v=VECTORS.find(v=>v.id===id);if(v) v.on=!v.on;renderVectors();}
+
+function renderMitigations(){
+  document.getElementById('mitig-list').innerHTML=MITIGATIONS.map(m=>{
+    const c=mitigStats[m.id]||0;
+    return '<div class="mitig-item'+(m.on?' active':'')+'"><input type="checkbox" '+(m.on?'checked':'')+' onchange="toggleMitigation(\''+m.id+'\')"><label onclick="toggleMitigation(\''+m.id+'\')">'+m.label+'</label><span class="mitig-eff '+(c>0?'fired':'')+' ">'+c+'x</span></div>';
+  }).join('');
+}
+function toggleMitigation(id){const m=MITIGATIONS.find(m=>m.id===id);if(m){m.on=!m.on;addLog({type:'info',msg:(m.on?'✔ ':' ✘ ')+m.label});}renderMitigations();}
+
+function renderDecoyTypeList(){
+  document.getElementById('decoy-type-list').innerHTML=DECOY_TYPES.map(dt=>
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;"><input type="checkbox" '+(dt.on?'checked':'')+' onchange="toggleDT(\''+dt.id+'\')" style="accent-color:var(--pink)"><span style="font-size:11px;color:var(--text2)">'+dt.label+'</span></div>'
+  ).join('');
+}
+function toggleDT(id){const dt=DECOY_TYPES.find(d=>d.id===id);if(dt) dt.on=!dt.on;}
+
+function renderObjList(filter){
+  let nodes=S.nodes;if(filter) nodes=nodes.filter(n=>n.label.toLowerCase().includes(filter.toLowerCase())||n.type.includes(filter));
+  const list=document.getElementById('obj-list');list.innerHTML='';
+  for(const n of nodes.slice(0,500)){
+    const div=document.createElement('div');div.className='obj-item'+(S.selected===n.id?' selected':'');
+    const sc=n.isDecoy?'var(--pink)':n.infected?'var(--red)':n.status==='vulnerable'?'var(--orange)':'var(--green)';
+    div.innerHTML='<span class="obj-icon">'+(NT[n.type]?.icon||'●')+'</span><span class="obj-name">'+n.label+'</span><div class="obj-status" style="background:'+sc+'"></div>';
+    div.onclick=()=>selectNode(n.id);list.appendChild(div);
+  }
+  if(nodes.length>500){const d=document.createElement('div');d.style.cssText='padding:6px;font-size:10px;color:var(--text3);text-align:center;';d.textContent='+'+(nodes.length-500)+' more';list.appendChild(d);}
+}
+function filterObjects(v){renderObjList(v);}
+
+// ═══════════════════════════════════
+// DETAIL
+// ═══════════════════════════════════
+function selectNode(id){S.selected=id;renderDetail(id);draw();}
+
+function renderDetail(id){
+  const n=S.nodes.find(x=>x.id===id);
+  const p=document.getElementById('detail-panel');
+  if(!n){p.innerHTML='<div class="detail-empty"><div class="icon">⬡</div><div>Select a node to inspect</div></div>';return;}
+  const sn=S.subnets.find(s=>s.id===n.subnet);
+  const conns=S.edges.filter(e=>e.src===n.id||e.dst===n.id).length;
+  const actC=S.edges.filter(e=>(e.src===n.id||e.dst===n.id)&&e.active).length;
+  const dHitC=decoyAlerts.filter(a=>a.decoyId===n.id).length;
+  const stag=n.isDecoy?'<span class="tag tag-pink">DECOY</span>'+(n.decoyAlert?'<span class="tag tag-red">TRIGGERED</span>':''):
+    n.infected?'<span class="tag tag-red">INFECTED</span>':n.isolated?'<span class="tag tag-blue">ISOLATED</span>':
+    n.status==='vulnerable'?'<span class="tag tag-orange">VULNERABLE</span>':'<span class="tag tag-green">CLEAN</span>';
+  const rtags=(n.roles||[]).map(r=>'<span class="tag tag-gray">'+r+'</span>').join('');
+  const ctag=n.hasCreds?'<span class="tag tag-orange">STOLEN CREDS</span>':'';
+
+  p.innerHTML=
+    '<div class="detail-header"><div class="detail-title">'+(NT[n.type]?.icon||'')+' '+n.label+'</div><div class="detail-sub">'+n.type.toUpperCase()+' · ID:'+n.id+'</div></div>'+
+    '<div class="detail-section"><div class="ds-title">Status</div><div class="tag-list">'+stag+ctag+rtags+'</div></div>'+
+    '<div class="detail-section"><div class="ds-title">Network</div>'+
+      '<div class="kv-row"><span class="kv-key">Subnet</span><span class="kv-val">'+(sn?.name||'—')+'</span></div>'+
+      '<div class="kv-row"><span class="kv-key">Connections</span><span class="kv-val">'+conns+'</span></div>'+
+      '<div class="kv-row"><span class="kv-key">Active Paths</span><span class="kv-val" style="color:var(--red)">'+actC+'</span></div>'+
+      (n.isDecoy?'<div class="kv-row"><span class="kv-key">Times triggered</span><span class="kv-val" style="color:var(--pink)">'+dHitC+'</span></div>':'')+
+    '</div>'+
+    '<div class="detail-section"><div class="ds-title">Actions</div><div style="display:flex;flex-wrap:wrap;gap:5px;">'+
+      '<button class="btn-secondary" style="flex:1;min-width:78px;" onclick="ctxAction(\'patient\')">Patient Zero</button>'+
+      '<button class="btn-secondary" style="flex:1;min-width:78px;" onclick="ctxAction(\'isolate\')">'+(n.isolated?'Un-isolate':'Isolate')+'</button>'+
+      '<button class="btn-secondary" style="flex:1;min-width:78px;" onclick="ctxAction(\'vuln\')">'+(n.status==='vulnerable'?'Mark Safe':'Mark Vuln')+'</button>'+
+      '<button class="btn-secondary" style="flex:1;min-width:78px;" onclick="ctxAction(\'creds\')">'+(n.hasCreds?'Remove Creds':'Add Creds')+'</button>'+
+      '<button class="btn-secondary" style="flex:1;min-width:78px;color:var(--pink);border-color:rgba(255,122,178,.4);" onclick="ctxAction(\'decoy\')">'+(n.isDecoy?'Un-decoy':'Set Decoy')+'</button>'+
+    '</div></div>';
+}
+
+function ctxAction(action){
+  const n=S.nodes.find(x=>x.id===S.selected);if(!n) return;
+  if(action==='patient'){resetInfection();n.infected=true;n.isDecoy=false;addLog({type:'crit',msg:'Patient zero: '+n.label});}
+  else if(action==='isolate'){n.isolated=!n.isolated;n.infected=false;addLog({type:'info',msg:(n.isolated?'Isolated':'Un-isolated')+': '+n.label});}
+  else if(action==='vuln'){n.status=n.status==='vulnerable'?'safe':'vulnerable';}
+  else if(action==='creds'){n.hasCreds=!n.hasCreds;addLog({type:'warn',msg:(n.hasCreds?'Creds+':'Creds-')+': '+n.label});}
+  else if(action==='decoy'){n.isDecoy=!n.isDecoy;n.infected=false;if(n.isDecoy) n.roles=['Decoy'];}
+  renderDetail(S.selected);updateStats();draw();
+}
+
+function resetInfection(){for(const n of S.nodes){n.infected=false;n.decoyAlert=false;}for(const e of S.edges){e.active=false;e.decoyHit=false;}}
+
+// ═══════════════════════════════════
+// CANVAS EVENTS
+// ═══════════════════════════════════
+function setTool(t){S.tool=t;document.getElementById('tool-select').classList.toggle('active',t==='select');document.getElementById('tool-pan').classList.toggle('active',t==='pan');}
+
+function hitTest(sx,sy){
+  const r=Math.max(10,Math.min(18,12/S.camZ*0.8+4)),w=s2w(sx,sy);
+  for(let i=S.nodes.length-1;i>=0;i--){const n=S.nodes[i],dx=n.x-w.x,dy=n.y-w.y;if(dx*dx+dy*dy<r*r) return n;}
+  return null;
+}
+
+canvas.addEventListener('mousedown',e=>{
+  if(S.tool==='pan'||e.button===1){S.panning=true;S.panStartX=e.clientX;S.panStartY=e.clientY;S.panCamX=S.camX;S.panCamY=S.camY;canvas.classList.add('grabbing');return;}
+  const n=hitTest(e.offsetX,e.offsetY);
+  if(n){S.dragging=true;S.dragNode=n;const w=s2w(e.offsetX,e.offsetY);S.nodeDragOX=n.x-w.x;S.nodeDragOY=n.y-w.y;selectNode(n.id);}
+  else{S.selected=null;document.getElementById('detail-panel').innerHTML='<div class="detail-empty"><div class="icon">⬡</div><div>Select a node to inspect</div></div>';draw();}
+});
+
+canvas.addEventListener('mousemove',e=>{
+  if(S.panning){S.camX=S.panCamX+(e.clientX-S.panStartX);S.camY=S.panCamY+(e.clientY-S.panStartY);draw();return;}
+  if(S.dragging&&S.dragNode){const w=s2w(e.offsetX,e.offsetY);S.dragNode.x=w.x+S.nodeDragOX;S.dragNode.y=w.y+S.nodeDragOY;draw();}
+});
+
+canvas.addEventListener('mouseup',()=>{S.dragging=false;S.dragNode=null;S.panning=false;canvas.classList.remove('grabbing');});
+
+canvas.addEventListener('wheel',e=>{
+  e.preventDefault();const f=e.deltaY<0?1.1:0.91;const wx=(e.offsetX-S.camX)/S.camZ,wy=(e.offsetY-S.camY)/S.camZ;
+  S.camZ=Math.max(0.05,Math.min(5,S.camZ*f));S.camX=e.offsetX-wx*S.camZ;S.camY=e.offsetY-wy*S.camZ;draw();
+},{passive:false});
+
+canvas.addEventListener('contextmenu',e=>{e.preventDefault();const n=hitTest(e.offsetX,e.offsetY);if(n){contextNode=n;selectNode(n.id);const m=document.getElementById('ctx-menu');m.style.display='block';m.style.left=e.clientX+'px';m.style.top=e.clientY+'px';}});
+document.addEventListener('click',()=>{document.getElementById('ctx-menu').style.display='none';});
+
+function ctxSetPatient(){if(!contextNode)return;resetInfection();contextNode.infected=true;contextNode.isDecoy=false;addLog({type:'crit',msg:'Patient zero: '+contextNode.label});updateStats();draw();}
+function ctxToggleVuln(){if(!contextNode)return;contextNode.status=contextNode.status==='vulnerable'?'safe':'vulnerable';updateStats();draw();}
+function ctxIsolate(){if(!contextNode)return;contextNode.isolated=!contextNode.isolated;contextNode.infected=false;addLog({type:'info',msg:(contextNode.isolated?'Isolated':'Un-isolated')+': '+contextNode.label});updateStats();draw();}
+function ctxAddCreds(){if(!contextNode)return;contextNode.hasCreds=!contextNode.hasCreds;addLog({type:'warn',msg:(contextNode.hasCreds?'Creds+':'Creds-')+': '+contextNode.label});draw();}
+function ctxAddAdmin(){if(!contextNode)return;if(!contextNode.roles.includes('Admin')) contextNode.roles.push('Admin');addLog({type:'warn',msg:'Admin: '+contextNode.label});renderDetail(contextNode.id);}
+function ctxToggleDecoy(){if(!contextNode)return;contextNode.isDecoy=!contextNode.isDecoy;contextNode.infected=false;if(contextNode.isDecoy) contextNode.roles=['Decoy'];addLog({type:'info',msg:(contextNode.isDecoy?'Decoy+':'Decoy-')+': '+contextNode.label});renderDetail(contextNode.id);updateStats();draw();}
+function ctxDelete(){if(!contextNode)return;S.nodes=S.nodes.filter(n=>n.id!==contextNode.id);S.edges=S.edges.filter(e=>e.src!==contextNode.id&&e.dst!==contextNode.id);if(S.selected===contextNode.id){S.selected=null;document.getElementById('detail-panel').innerHTML='<div class="detail-empty"><div class="icon">⬡</div><div>Select a node to inspect</div></div>';}updateStats();renderObjList();draw();contextNode=null;}
+
+// ═══════════════════════════════════
+// CAMERA
+// ═══════════════════════════════════
+function fitView(){
+  if(!S.nodes.length) return;
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  for(const n of S.nodes){if(n.x<minX)minX=n.x;if(n.y<minY)minY=n.y;if(n.x>maxX)maxX=n.x;if(n.y>maxY)maxY=n.y;}
+  const pad=60,W=canvas.width,H=canvas.height,nx=maxX-minX+pad*2,ny=maxY-minY+pad*2;
+  S.camZ=Math.max(0.05,Math.min(2,Math.min(W/nx,H/ny)));
+  S.camX=W/2-(minX+(maxX-minX)/2)*S.camZ;S.camY=H/2-(minY+(maxY-minY)/2)*S.camZ;draw();
+}
+function zoomIn(){S.camZ=Math.min(5,S.camZ*1.2);draw();}
+function zoomOut(){S.camZ=Math.max(0.05,S.camZ/1.2);draw();}
+
+// ═══════════════════════════════════
+// EXPORT / IMPORT DESIGN
+// ═══════════════════════════════════
+function openExport(){
+  document.getElementById('modal-title').textContent='Export Design';
+  document.getElementById('modal-data').value=JSON.stringify({nodes:S.nodes,edges:S.edges,subnets:S.subnets,vectors:VECTORS,mitigations:MITIGATIONS},null,2);
+  document.getElementById('modal-action-btn').textContent='Copy JSON';
+  modalMode='export';document.getElementById('modal-overlay').classList.add('open');
+}
+function openImport(){
+  document.getElementById('modal-title').textContent='Import Design (paste JSON)';
+  document.getElementById('modal-data').value='';document.getElementById('modal-action-btn').textContent='Import';
+  modalMode='import';document.getElementById('modal-overlay').classList.add('open');
+}
+function closeModal(){document.getElementById('modal-overlay').classList.remove('open');}
+function modalAction(){
+  if(modalMode==='export'){
+    navigator.clipboard.writeText(document.getElementById('modal-data').value).then(()=>{
+      document.getElementById('modal-action-btn').textContent='✓ Copied!';
+      setTimeout(()=>{document.getElementById('modal-action-btn').textContent='Copy JSON';},1500);
+    });
+  } else {
+    try{
+      const data=JSON.parse(document.getElementById('modal-data').value);
+      S.nodes=data.nodes||[];S.edges=data.edges||[];S.subnets=data.subnets||[];
+      if(data.vectors) for(const v of data.vectors){const fv=VECTORS.find(x=>x.id===v.id);if(fv) fv.on=v.on;}
+      if(data.mitigations) for(const m of data.mitigations){const fm=MITIGATIONS.find(x=>x.id===m.id);if(fm) fm.on=m.on;}
+      nodeIdSeq=Math.max(...S.nodes.map(n=>n.id),0)+1;
+      renderVectors();renderMitigations();renderObjList();updateStats();fitView();
+      addLog({type:'ok',msg:'Imported '+S.nodes.length+' nodes'});closeModal();
+    } catch(err){addLog({type:'warn',msg:'Import failed: '+err.message});}
+  }
+}
+
+// ═══════════════════════════════════
+// INIT
+// ═══════════════════════════════════
+renderVectors();renderMitigations();renderDecoyTypeList();setTool('select');resize();generateNetwork();
+</script>
+</body>
+</html>
