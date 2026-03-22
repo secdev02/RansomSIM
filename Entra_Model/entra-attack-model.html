@@ -1,0 +1,1175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EntraID Attack Model</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto+Mono:wght@400;500&family=Roboto:wght@300;400;500&display=swap');
+
+  :root {
+    --blue:#1a73e8;--blue-light:#e8f0fe;--blue-dark:#1557b0;
+    --red:#d93025;--red-light:#fce8e6;
+    --yellow:#f9ab00;--yellow-light:#fef7e0;
+    --green:#1e8e3e;--green-light:#e6f4ea;
+    --grey-50:#f8f9fa;--grey-100:#f1f3f4;--grey-200:#e8eaed;
+    --grey-300:#dadce0;--grey-500:#9aa0a6;--grey-700:#5f6368;--grey-900:#202124;
+    --surface:#fff;
+    --purple:#7c4dff;--purple-light:#ede7f6;
+    --orange:#e65100;--orange-light:#fff3e0;
+    --teal:#00796b;--teal-light:#e0f2f1;
+    --shadow-1:0 1px 2px rgba(60,64,67,.3),0 1px 3px 1px rgba(60,64,67,.15);
+    --shadow-2:0 1px 3px rgba(60,64,67,.3),0 4px 8px 3px rgba(60,64,67,.15);
+    --shadow-3:0 4px 8px rgba(60,64,67,.3),0 8px 16px rgba(60,64,67,.15);
+    --radius:8px;--radius-lg:12px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Roboto',sans-serif;background:var(--grey-50);color:var(--grey-900);height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+
+  /* TOPBAR */
+  .topbar{background:var(--surface);border-bottom:1px solid var(--grey-200);display:flex;align-items:center;padding:0 16px;height:56px;gap:10px;flex-shrink:0;box-shadow:var(--shadow-1);z-index:100;}
+  .topbar-logo{display:flex;align-items:center;gap:8px;font-family:'Google Sans',sans-serif;font-size:18px;font-weight:500;color:var(--grey-700);}
+  .topbar-divider{width:1px;height:28px;background:var(--grey-300);margin:0 2px;}
+  .topbar-title{font-family:'Google Sans',sans-serif;font-size:16px;font-weight:500;color:var(--grey-700);}
+  .topbar-spacer{flex:1;}
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:16px;font-size:13px;font-weight:500;cursor:pointer;border:1px solid var(--grey-300);background:var(--surface);color:var(--grey-700);transition:background .15s,box-shadow .15s;white-space:nowrap;}
+  .chip:hover{background:var(--grey-100);box-shadow:var(--shadow-1);}
+  .chip.active{background:var(--blue-light);border-color:var(--blue);color:var(--blue);}
+  .view-toggle{display:flex;background:var(--grey-100);border-radius:20px;padding:3px;gap:2px;}
+  .view-btn{padding:4px 14px;border-radius:14px;font-size:13px;font-weight:500;cursor:pointer;border:none;background:transparent;color:var(--grey-700);transition:background .15s,color .15s;font-family:'Google Sans',sans-serif;}
+  .view-btn.active{background:var(--surface);color:var(--blue);box-shadow:var(--shadow-1);}
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:6px;font-size:14px;font-weight:500;cursor:pointer;border:none;transition:background .15s,box-shadow .15s;font-family:'Google Sans',sans-serif;}
+  .btn-filled{background:var(--blue);color:#fff;}
+  .btn-filled:hover{background:var(--blue-dark);box-shadow:var(--shadow-1);}
+  .btn-tonal{background:var(--blue-light);color:var(--blue);}
+  .btn-tonal:hover{background:#d2e3fc;}
+  .btn-outline{background:transparent;color:var(--blue);border:1px solid var(--grey-300);}
+  .btn-outline:hover{background:var(--blue-light);}
+  .btn-sm{padding:5px 12px;font-size:13px;}
+  .btn-danger{background:var(--red);color:#fff;}
+  .btn-danger:hover{background:#b3261e;}
+
+  /* LAYOUT */
+  .layout{display:flex;flex:1;overflow:hidden;}
+
+  /* SIDEBAR */
+  .sidebar{width:216px;background:var(--surface);border-right:1px solid var(--grey-200);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;}
+  .sidebar-section{padding:8px 0;}
+  .sidebar-label{padding:8px 16px 4px;font-size:11px;font-weight:500;color:var(--grey-500);text-transform:uppercase;letter-spacing:.8px;}
+  .sidebar-item{display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;font-size:13px;color:var(--grey-700);border-radius:0 24px 24px 0;margin-right:8px;transition:background .15s;}
+  .sidebar-item:hover{background:var(--grey-100);}
+  .sidebar-item.active{background:var(--blue-light);color:var(--blue);font-weight:500;}
+  .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  .dot-red{background:var(--red);}.dot-yellow{background:var(--yellow);}
+  .dot-green{background:var(--green);}.dot-blue{background:var(--blue);}
+  .dot-purple{background:var(--purple);}.dot-orange{background:var(--orange);}
+  .dot-teal{background:var(--teal);}
+
+  /* MAIN */
+  .main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+  .toolbar{background:var(--surface);border-bottom:1px solid var(--grey-200);display:flex;align-items:center;gap:8px;padding:8px 16px;flex-shrink:0;}
+
+  /* CANVAS VIEW */
+  .canvas-wrap{flex:1;position:relative;overflow:hidden;background:var(--grey-50);background-image:radial-gradient(var(--grey-300) 1px,transparent 1px);background-size:24px 24px;}
+  #canvas{position:absolute;top:0;left:0;width:100%;height:100%;}
+  #edges-svg{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:5;}
+  .edge-path{fill:none;stroke-width:2;}
+  .edge-label-bg{fill:var(--surface);}
+  .edge-label-text{font-size:11px;font-family:'Roboto',sans-serif;fill:var(--grey-700);}
+
+  /* GRAPH VIEW */
+  .graph-wrap{flex:1;position:relative;overflow:hidden;background:#0f1117;display:none;}
+  .graph-wrap.active{display:flex;}
+  #graphSvg{width:100%;height:100%;cursor:grab;}
+  #graphSvg.grabbing{cursor:grabbing;}
+
+  /* NODE CARDS */
+  .node{position:absolute;background:var(--surface);border:2px solid var(--grey-300);border-radius:var(--radius);padding:10px 14px;font-size:13px;cursor:grab;user-select:none;min-width:138px;box-shadow:var(--shadow-1);transition:box-shadow .2s,border-color .2s;z-index:10;}
+  .node:hover{box-shadow:var(--shadow-2);}
+  .node.selected{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-light),var(--shadow-2);}
+  .node.dragging{box-shadow:var(--shadow-3);cursor:grabbing;z-index:50;}
+  .node-header{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+  .node-icon{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+  .node-title{font-family:'Google Sans',sans-serif;font-size:13px;font-weight:500;}
+  .node-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:500;margin-top:4px;}
+  .badge-red{background:var(--red-light);color:var(--red);}
+  .badge-yellow{background:var(--yellow-light);color:#b06000;}
+  .badge-green{background:var(--green-light);color:var(--green);}
+  .badge-blue{background:var(--blue-light);color:var(--blue);}
+  .badge-purple{background:var(--purple-light);color:var(--purple);}
+  .badge-orange{background:var(--orange-light);color:var(--orange);}
+  .badge-teal{background:var(--teal-light);color:var(--teal);}
+  .badge-grey{background:var(--grey-100);color:var(--grey-700);}
+  .node.decoy{border-style:dashed;border-color:var(--yellow);}
+  .node.decoy::before{content:'🍯';position:absolute;top:-10px;right:-10px;font-size:16px;}
+  .node.mitigated{border-color:var(--green);}
+  .node.mitigated::after{content:'✓';position:absolute;top:-10px;right:-10px;width:20px;height:20px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;}
+  .node-tag{font-size:11px;color:var(--grey-500);margin-top:2px;}
+  .node.sim-active{animation:simPulse .6s ease-in-out infinite alternate;}
+  @keyframes simPulse{from{box-shadow:0 0 0 0 rgba(217,48,37,.4);}to{box-shadow:0 0 0 8px rgba(217,48,37,0);}}
+  .node.sim-blocked{animation:simBlock .6s ease-in-out infinite alternate;}
+  @keyframes simBlock{from{box-shadow:0 0 0 0 rgba(30,142,62,.4);}to{box-shadow:0 0 0 8px rgba(30,142,62,0);}}
+
+  /* RIGHT PANEL */
+  .right-panel{width:296px;background:var(--surface);border-left:1px solid var(--grey-200);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;}
+  .panel-header{padding:14px 16px;font-family:'Google Sans',sans-serif;font-size:15px;font-weight:500;border-bottom:1px solid var(--grey-200);display:flex;align-items:center;justify-content:space-between;}
+  .panel-section{padding:12px 16px;border-bottom:1px solid var(--grey-200);}
+  .panel-section-title{font-size:11px;font-weight:500;color:var(--grey-500);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;}
+  .field-row{margin-bottom:10px;}
+  .field-label{font-size:12px;color:var(--grey-700);margin-bottom:4px;}
+  .field-input{width:100%;padding:7px 10px;border:1px solid var(--grey-300);border-radius:6px;font-size:13px;font-family:'Roboto',sans-serif;background:var(--surface);color:var(--grey-900);outline:none;transition:border-color .15s;}
+  .field-input:focus{border-color:var(--blue);}
+  .field-select{width:100%;padding:7px 10px;border:1px solid var(--grey-300);border-radius:6px;font-size:13px;font-family:'Roboto',sans-serif;background:var(--surface);color:var(--grey-900);outline:none;cursor:pointer;}
+  .toggle-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+  .toggle-label{font-size:13px;color:var(--grey-700);}
+  .toggle{width:36px;height:20px;border-radius:10px;background:var(--grey-300);cursor:pointer;position:relative;transition:background .2s;flex-shrink:0;}
+  .toggle.on{background:var(--blue);}
+  .toggle::after{content:'';position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:2px;left:2px;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.3);}
+  .toggle.on::after{left:18px;}
+
+  /* SIM LOG */
+  .sim-log{font-family:'Roboto Mono',monospace;font-size:12px;background:#1a1a2e;color:#e0e0e0;border-radius:var(--radius);padding:12px;max-height:200px;overflow-y:auto;line-height:1.7;}
+  .log-green{color:#69f0ae;}.log-red{color:#ff5252;}.log-yellow{color:#ffd740;}.log-blue{color:#64b5f6;}.log-grey{color:#9e9e9e;}
+
+  /* STEP LIST */
+  .step-list{display:flex;flex-direction:column;gap:6px;}
+  .step-item{display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border-radius:6px;background:var(--grey-50);border:1px solid var(--grey-200);font-size:13px;cursor:pointer;transition:background .15s;}
+  .step-item:hover{background:var(--blue-light);border-color:var(--blue);}
+  .step-num{width:20px;height:20px;border-radius:50%;background:var(--blue);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+
+  /* TABS */
+  .tabs{display:flex;border-bottom:1px solid var(--grey-200);}
+  .tab{padding:10px 14px;font-size:13px;cursor:pointer;color:var(--grey-700);border-bottom:3px solid transparent;margin-bottom:-1px;transition:color .15s;font-family:'Google Sans',sans-serif;}
+  .tab:hover{color:var(--blue);background:var(--grey-50);}
+  .tab.active{color:var(--blue);border-color:var(--blue);font-weight:500;}
+  .tab-content{display:none;}
+  .tab-content.active{display:block;}
+
+  /* STATUSBAR */
+  .statusbar{background:var(--surface);border-top:1px solid var(--grey-200);padding:4px 16px;display:flex;align-items:center;gap:16px;font-size:12px;color:var(--grey-500);flex-shrink:0;}
+  .status-dot{width:6px;height:6px;border-radius:50%;background:var(--green);}
+  .status-dot.running{background:var(--yellow);animation:pulse 1s infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+
+  /* TOAST */
+  .toast-container{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:8px;z-index:9999;align-items:center;}
+  .toast{background:var(--grey-900);color:#fff;padding:10px 20px;border-radius:6px;font-size:13px;font-family:'Google Sans',sans-serif;box-shadow:var(--shadow-3);animation:toastIn .2s ease;display:flex;align-items:center;gap:8px;}
+  @keyframes toastIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+
+  /* MODAL */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(32,33,36,.6);z-index:1000;align-items:center;justify-content:center;}
+  .modal-overlay.open{display:flex;}
+  .modal{background:var(--surface);border-radius:var(--radius-lg);width:520px;max-height:80vh;box-shadow:var(--shadow-3);display:flex;flex-direction:column;overflow:hidden;animation:modalIn .15s ease;}
+  @keyframes modalIn{from{transform:scale(.96) translateY(8px);opacity:0;}to{transform:none;opacity:1;}}
+  .modal-header{padding:20px 24px 16px;border-bottom:1px solid var(--grey-200);font-family:'Google Sans',sans-serif;font-size:18px;font-weight:500;display:flex;align-items:center;justify-content:space-between;}
+  .modal-body{padding:20px 24px;overflow-y:auto;flex:1;}
+  .modal-footer{padding:12px 24px;border-top:1px solid var(--grey-200);display:flex;justify-content:flex-end;gap:8px;}
+  .icon-btn{width:36px;height:36px;border-radius:50%;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--grey-700);font-size:18px;transition:background .15s;}
+  .icon-btn:hover{background:var(--grey-100);}
+
+  /* LEGEND */
+  .legend{display:flex;flex-wrap:wrap;gap:8px;}
+  .legend-item{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--grey-700);}
+  .legend-line{width:24px;height:2px;}
+
+  /* MISC */
+  .flex-row{display:flex;align-items:center;gap:8px;}
+  .text-sm{font-size:13px;color:var(--grey-700);}
+  .text-xs{font-size:12px;color:var(--grey-500);}
+  .mb8{margin-bottom:8px;}
+
+  /* GRAPH CONTROLS OVERLAY */
+  .graph-controls{position:absolute;bottom:16px;right:16px;display:flex;flex-direction:column;gap:6px;z-index:20;}
+  .graph-ctrl-btn{width:36px;height:36px;border-radius:8px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);transition:background .15s;}
+  .graph-ctrl-btn:hover{background:rgba(255,255,255,.22);}
+
+  /* GRAPH LEGEND OVERLAY */
+  .graph-legend{position:absolute;top:16px;left:16px;background:rgba(15,17,23,.85);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:10px 14px;backdrop-filter:blur(6px);z-index:20;}
+  .graph-legend-title{font-size:11px;font-weight:500;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;}
+  .gl-item{display:flex;align-items:center;gap:8px;font-size:12px;color:rgba(255,255,255,.75);margin-bottom:5px;}
+  .gl-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+  .gl-line{width:24px;height:2px;flex-shrink:0;}
+
+  /* GRAPH tooltip */
+  .graph-tooltip{position:absolute;background:rgba(15,17,23,.92);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:10px 14px;pointer-events:none;z-index:30;display:none;max-width:220px;backdrop-filter:blur(6px);}
+  .gt-title{font-family:'Google Sans',sans-serif;font-size:13px;font-weight:500;color:#fff;margin-bottom:4px;}
+  .gt-badge{font-size:11px;padding:2px 8px;border-radius:10px;display:inline-block;margin-bottom:6px;}
+  .gt-note{font-size:12px;color:rgba(255,255,255,.6);line-height:1.5;}
+  .gt-tech{font-family:'Roboto Mono',monospace;font-size:11px;color:rgba(255,255,255,.4);margin-top:4px;}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-logo">
+    <svg width="22" height="22" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#1a73e8" stroke-width="2" fill="none" stroke-linejoin="round"/></svg>
+    <span>EntraID</span><span style="color:var(--grey-300);font-weight:300;margin:0 2px">|</span>
+    <span style="color:var(--red);font-weight:600">Attack Model</span>
+  </div>
+  <div class="topbar-divider"></div>
+  <!-- VIEW TOGGLE -->
+  <div class="view-toggle">
+    <button class="view-btn active" id="btnCanvas" onclick="setView('canvas')">⊞ Canvas</button>
+    <button class="view-btn" id="btnGraph" onclick="setView('graph')">◉ Graph</button>
+  </div>
+  <div class="topbar-spacer"></div>
+  <div class="chip" onclick="importModel()">⬆ Import</div>
+  <div class="chip" onclick="exportModel()">⬇ Export</div>
+  <div class="chip active" id="simChip" onclick="toggleSim()">▶ Simulation</div>
+  <button class="btn btn-danger btn-sm" onclick="openClearModal()">✕ Clear</button>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Attack Paths</div>
+      <div class="sidebar-item active" onclick="setSidebarActive(this)"><div class="dot dot-blue"></div>All Paths</div>
+      <div class="sidebar-item" onclick="setSidebarActive(this);addNodeTemplate('phishing')"><div class="dot dot-red"></div>Phishing / EvilProxy</div>
+      <div class="sidebar-item" onclick="setSidebarActive(this);addNodeTemplate('device_code')"><div class="dot dot-orange"></div>Device Code Flow</div>
+      <div class="sidebar-item" onclick="setSidebarActive(this);addNodeTemplate('aitm')"><div class="dot dot-purple"></div>AiTM Proxy</div>
+      <div class="sidebar-item" onclick="setSidebarActive(this);addNodeTemplate('oauth_consent')"><div class="dot dot-yellow"></div>OAuth Consent Grant</div>
+      <div class="sidebar-item" onclick="setSidebarActive(this);addNodeTemplate('pass_spray')"><div class="dot dot-red"></div>Password Spray</div>
+      <div class="sidebar-item" onclick="setSidebarActive(this);addNodeTemplate('token_theft')"><div class="dot dot-purple"></div>Token Theft / Replay</div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Post-Compromise</div>
+      <div class="sidebar-item" onclick="setSidebarActive(this);addNodeTemplate('bec')"><div class="dot dot-red"></div>BEC / Mail Rules</div>
+      <div class="sidebar-item" onclick="setSidebarActive(this);addNodeTemplate('priv_esc')"><div class="dot dot-orange"></div>Privilege Escalation</div>
+      <div class="sidebar-item" onclick="setSidebarActive(this);addNodeTemplate('persistence')"><div class="dot dot-yellow"></div>App Reg. Backdoor</div>
+      <div class="sidebar-item" onclick="setSidebarActive(this);addNodeTemplate('lateral')"><div class="dot dot-blue"></div>Lateral Movement</div>
+      <div class="sidebar-item" onclick="setSidebarActive(this);addNodeTemplate('exfil')"><div class="dot dot-red"></div>Data Exfiltration</div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Targets / Assets</div>
+      <div class="sidebar-item" onclick="setSidebarActive(this);addNodeTemplate('user')"><div class="dot dot-blue"></div>User Identity</div>
+      <div class="sidebar-item" onclick="setSidebarActive(this);addNodeTemplate('admin')"><div class="dot dot-red"></div>Global Admin</div>
+      <div class="sidebar-item" onclick="setSidebarActive(this);addNodeTemplate('app_reg')"><div class="dot dot-teal"></div>App Registration</div>
+      <div class="sidebar-item" onclick="setSidebarActive(this);addNodeTemplate('mailbox')"><div class="dot dot-blue"></div>Exchange Mailbox</div>
+      <div class="sidebar-item" onclick="setSidebarActive(this);addNodeTemplate('sharepoint')"><div class="dot dot-teal"></div>SharePoint / Teams</div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Defenses</div>
+      <div class="sidebar-item" onclick="setSidebarActive(this);addNodeTemplate('mfa')"><div class="dot dot-green"></div>MFA (TOTP/FIDO2)</div>
+      <div class="sidebar-item" onclick="setSidebarActive(this);addNodeTemplate('ca_policy')"><div class="dot dot-green"></div>Conditional Access</div>
+      <div class="sidebar-item" onclick="setSidebarActive(this);addNodeTemplate('defender')"><div class="dot dot-green"></div>Defender for Identity</div>
+      <div class="sidebar-item" onclick="setSidebarActive(this);addNodeTemplate('decoy')"><div class="dot dot-yellow"></div>🍯 Honeypot / Decoy</div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="toolbar">
+      <button class="btn btn-tonal btn-sm" onclick="loadTemplate('device_code_chain')">+ Device Code</button>
+      <button class="btn btn-tonal btn-sm" onclick="loadTemplate('aitm_chain')">+ AiTM Chain</button>
+      <button class="btn btn-tonal btn-sm" onclick="loadTemplate('bec_chain')">+ BEC Chain</button>
+      <button class="btn btn-tonal btn-sm" onclick="loadTemplate('full_attack')">+ Full Kill Chain</button>
+      <div style="flex:1"></div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-line" style="background:var(--red)"></div>Attack</div>
+        <div class="legend-item"><div class="legend-line" style="background:var(--green)"></div>Mitigation</div>
+        <div class="legend-item"><div class="legend-line" style="background:var(--blue)"></div>Detection</div>
+        <div class="legend-item"><div class="legend-line" style="background:var(--yellow);border-top:2px dashed var(--yellow)"></div>Decoy</div>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="fitView()">⊡ Fit</button>
+    </div>
+
+    <!-- CANVAS VIEW -->
+    <div class="canvas-wrap" id="canvasWrap">
+      <svg id="edges-svg">
+        <defs>
+          <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="var(--grey-500)"/></marker>
+          <marker id="arr-red" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="var(--red)"/></marker>
+          <marker id="arr-green" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="var(--green)"/></marker>
+          <marker id="arr-blue" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="var(--blue)"/></marker>
+          <marker id="arr-yellow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="var(--yellow)"/></marker>
+        </defs>
+        <g id="edgesGroup"></g>
+      </svg>
+      <div id="canvas"></div>
+    </div>
+
+    <!-- GRAPH VIEW -->
+    <div class="graph-wrap" id="graphWrap">
+      <svg id="graphSvg">
+        <defs>
+          <marker id="garr-red" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#ff5252"/></marker>
+          <marker id="garr-green" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#69f0ae"/></marker>
+          <marker id="garr-blue" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#64b5f6"/></marker>
+          <marker id="garr-yellow" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#ffd740"/></marker>
+          <filter id="glow"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+        <g id="gEdges"></g>
+        <g id="gNodes"></g>
+      </svg>
+      <!-- graph legend -->
+      <div class="graph-legend">
+        <div class="graph-legend-title">Node Types</div>
+        <div class="gl-item"><div class="gl-dot" style="background:#ff5252"></div>Attack / Initial Access</div>
+        <div class="gl-item"><div class="gl-dot" style="background:#ff9100"></div>Post-Compromise</div>
+        <div class="gl-item"><div class="gl-dot" style="background:#64b5f6"></div>Target / Asset</div>
+        <div class="gl-item"><div class="gl-dot" style="background:#69f0ae"></div>Defense / Mitigation</div>
+        <div class="gl-item"><div class="gl-dot" style="background:#ffd740;border:1px dashed #ffd740;"></div>Decoy / Honeypot</div>
+        <div style="margin-top:10px" class="graph-legend-title">Edges</div>
+        <div class="gl-item"><div class="gl-line" style="background:#ff5252"></div>Attack Path</div>
+        <div class="gl-item"><div class="gl-line" style="background:#69f0ae"></div>Mitigation / Block</div>
+        <div class="gl-item"><div class="gl-line" style="background:#64b5f6"></div>Detection</div>
+        <div class="gl-item"><div class="gl-line" style="background:#ffd740;border-top:2px dashed #ffd740;height:0"></div>Decoy Trigger</div>
+      </div>
+      <!-- graph controls -->
+      <div class="graph-controls">
+        <button class="graph-ctrl-btn" title="Zoom in" onclick="graphZoom(1.2)">+</button>
+        <button class="graph-ctrl-btn" title="Zoom out" onclick="graphZoom(0.83)">−</button>
+        <button class="graph-ctrl-btn" title="Reset view" onclick="graphReset()">⊡</button>
+        <button class="graph-ctrl-btn" title="Run physics layout" onclick="runForceLayout()">⟳</button>
+      </div>
+      <!-- tooltip -->
+      <div class="graph-tooltip" id="graphTooltip"></div>
+    </div>
+
+    <div class="statusbar">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText">Ready — click sidebar items or use toolbar templates</span>
+      <div style="flex:1"></div>
+      <span id="nodeCount">Nodes: 0</span>
+      <span>|</span>
+      <span id="edgeCount">Edges: 0</span>
+      <span>|</span>
+      <span id="simStep">Simulation: Idle</span>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+    <div class="panel-header">Properties <button class="icon-btn" onclick="openHelpModal()">?</button></div>
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('node-tab')">Node</div>
+      <div class="tab" onclick="switchTab('sim-tab')">Simulation</div>
+      <div class="tab" onclick="switchTab('mitigations-tab')">Mitigations</div>
+    </div>
+    <div id="node-tab" class="tab-content active">
+      <div class="panel-section" id="nodePropsPanel">
+        <div class="text-xs" style="padding:8px 0">Select a node to edit properties</div>
+      </div>
+    </div>
+    <div id="sim-tab" class="tab-content">
+      <div class="panel-section">
+        <div class="panel-section-title">Simulation Controls</div>
+        <div class="field-row"><div class="field-label">Attack Scenario</div>
+          <select class="field-select" id="scenarioSelect">
+            <option value="device_code">Device Code Phishing</option>
+            <option value="aitm">AiTM (Adversary-in-the-Middle)</option>
+            <option value="bec">Business Email Compromise</option>
+            <option value="oauth_consent">Illicit OAuth Consent</option>
+            <option value="token_theft">Token Theft &amp; Replay</option>
+            <option value="full">Full Kill Chain</option>
+          </select>
+        </div>
+        <div class="field-row"><div class="field-label">Simulation Speed</div>
+          <select class="field-select" id="simSpeed">
+            <option value="700">Fast</option>
+            <option value="1400" selected>Normal</option>
+            <option value="2800">Slow</option>
+          </select>
+        </div>
+        <div class="toggle-row"><span class="toggle-label">Phishing-resistant MFA</span><div class="toggle on" id="toggleMFA" onclick="this.classList.toggle('on')"></div></div>
+        <div class="toggle-row"><span class="toggle-label">Trigger decoys</span><div class="toggle on" id="toggleDecoy" onclick="this.classList.toggle('on')"></div></div>
+        <div class="toggle-row"><span class="toggle-label">Conditional Access blocks</span><div class="toggle" id="toggleCA" onclick="this.classList.toggle('on')"></div></div>
+        <div class="toggle-row"><span class="toggle-label">Defender for Identity</span><div class="toggle on" id="toggleDefender" onclick="this.classList.toggle('on')"></div></div>
+        <div class="flex-row" style="margin-top:12px">
+          <button class="btn btn-filled btn-sm" style="flex:1" onclick="runSimulation()">▶ Run</button>
+          <button class="btn btn-outline btn-sm" onclick="resetSim()">↺ Reset</button>
+        </div>
+      </div>
+      <div class="panel-section">
+        <div class="panel-section-title">Simulation Log</div>
+        <div class="sim-log" id="simLog"><span class="log-grey">// Log will appear here</span></div>
+      </div>
+    </div>
+    <div id="mitigations-tab" class="tab-content">
+      <div class="panel-section">
+        <div class="panel-section-title">Apply Mitigations</div>
+        <div class="step-list">
+          <div class="step-item" onclick="applyMitigation('phishing_resistant_mfa')"><div class="step-num">1</div><div><strong>Phishing-Resistant MFA</strong><div class="text-xs">FIDO2/Passkeys — blocks AiTM &amp; device code</div></div></div>
+          <div class="step-item" onclick="applyMitigation('ca_device_code')"><div class="step-num">2</div><div><strong>Block Device Code Flow</strong><div class="text-xs">CA policy — Authentication flows control</div></div></div>
+          <div class="step-item" onclick="applyMitigation('token_binding')"><div class="step-num">3</div><div><strong>Token Protection</strong><div class="text-xs">Bind access tokens to device — blocks replay</div></div></div>
+          <div class="step-item" onclick="applyMitigation('ca_compliant_device')"><div class="step-num">4</div><div><strong>Require Compliant Device</strong><div class="text-xs">Intune compliance — stops unmanaged token use</div></div></div>
+          <div class="step-item" onclick="applyMitigation('admin_roles_pim')"><div class="step-num">5</div><div><strong>PIM for Admin Roles</strong><div class="text-xs">Just-in-time elevation — limits blast radius</div></div></div>
+          <div class="step-item" onclick="applyMitigation('consent_policy')"><div class="step-num">6</div><div><strong>App Consent Policies</strong><div class="text-xs">Admin consent required — stops illicit OAuth</div></div></div>
+          <div class="step-item" onclick="applyMitigation('defender_xdr')"><div class="step-num">7</div><div><strong>Defender XDR</strong><div class="text-xs">Detects BEC patterns &amp; impossible travel</div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TOASTS -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="clearModal">
+  <div class="modal" style="width:360px">
+    <div class="modal-header">Clear Canvas <button class="icon-btn" onclick="closeClearModal()">✕</button></div>
+    <div class="modal-body"><p class="text-sm">Remove all nodes and edges from the canvas?</p></div>
+    <div class="modal-footer"><button class="btn btn-outline btn-sm" onclick="closeClearModal()">Cancel</button><button class="btn btn-danger btn-sm" onclick="clearCanvas()">Clear All</button></div>
+  </div>
+</div>
+<div class="modal-overlay" id="helpModal">
+  <div class="modal">
+    <div class="modal-header">Quick Start <button class="icon-btn" onclick="closeHelpModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="step-list">
+        <div class="step-item"><div class="step-num">1</div><div><strong>Build</strong> — Click sidebar items to drop nodes, or use toolbar for pre-built chains.</div></div>
+        <div class="step-item"><div class="step-num">2</div><div><strong>Connect</strong> — <kbd>Shift</kbd>+click two nodes to draw an edge between them.</div></div>
+        <div class="step-item"><div class="step-num">3</div><div><strong>Graph View</strong> — Switch to ◉ Graph in the top bar for a force-directed network view. Drag nodes, scroll to zoom, drag canvas to pan.</div></div>
+        <div class="step-item"><div class="step-num">4</div><div><strong>Simulate</strong> — Simulation tab → pick scenario → toggle defenses → Run.</div></div>
+        <div class="step-item"><div class="step-num">5</div><div><strong>Mitigate</strong> — Click items in Mitigations tab, then re-run to see impact.</div></div>
+        <div class="step-item"><div class="step-num">6</div><div><strong>Export</strong> — Save model as JSON for sharing or version control.</div></div>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-filled btn-sm" onclick="closeHelpModal()">Got it</button></div>
+  </div>
+</div>
+<div class="modal-overlay" id="importModal">
+  <div class="modal">
+    <div class="modal-header">Import Model <button class="icon-btn" onclick="closeImportModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="field-row"><div class="field-label">Paste JSON model</div>
+        <textarea class="field-input" id="importJson" rows="10" style="resize:vertical;font-family:'Roboto Mono',monospace;font-size:12px" placeholder='{"nodes":[...],"edges":[]}'></textarea>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-outline btn-sm" onclick="closeImportModal()">Cancel</button><button class="btn btn-filled btn-sm" onclick="doImport()">Import</button></div>
+  </div>
+</div>
+<div class="modal-overlay" id="edgeModal">
+  <div class="modal" style="width:360px">
+    <div class="modal-header">Add Edge <button class="icon-btn" onclick="closeEdgeModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="field-row"><div class="field-label">Edge Label</div><input class="field-input" id="edgeLabelInput" placeholder="e.g. Token Issued, Credential Capture…"/></div>
+      <div class="field-row"><div class="field-label">Edge Type</div>
+        <select class="field-select" id="edgeTypeInput">
+          <option value="attack">Attack Path</option>
+          <option value="mitigation">Mitigation / Block</option>
+          <option value="detection">Detection / Alert</option>
+          <option value="decoy">Decoy Trigger</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-outline btn-sm" onclick="closeEdgeModal()">Cancel</button><button class="btn btn-filled btn-sm" onclick="confirmEdge()">Add Edge</button></div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+var nodes=[],edges=[],selectedNode=null,edgeStart=null,pendingEdge=null;
+var simRunning=false,simInterval=null,appliedMitigations=new Set();
+var nodeCounter=0,edgeCounter=0;
+var currentView='canvas';
+
+// GRAPH VIEW STATE
+var gTranslate={x:0,y:0},gScale=1;
+var gDragging=false,gDragStart={x:0,y:0},gDragTranslate={x:0,y:0};
+var gNodeDrag=null,gNodeDragStart={x:0,y:0};
+var forceTimer=null;
+
+// ============================================================
+// NODE TEMPLATES
+// ============================================================
+var templates={
+  phishing:{title:'Phishing Page',icon:'🎣',color:'#d93025',iconBg:'#fce8e6',badge:'Initial Access',badgeClass:'badge-red',type:'attack',notes:'EvilProxy / Evilginx AiTM phishing page harvesting credentials and session tokens',tactic:'Initial Access',technique:'T1566'},
+  device_code:{title:'Device Code Phishing',icon:'📱',color:'#e65100',iconBg:'#fff3e0',badge:'OAuth Abuse',badgeClass:'badge-orange',type:'attack',notes:'Attacker generates device code, tricks user into authenticating — no password needed',tactic:'Credential Access',technique:'T1528'},
+  aitm:{title:'AiTM Proxy',icon:'🕵️',color:'#7c4dff',iconBg:'#ede7f6',badge:'Session Hijack',badgeClass:'badge-purple',type:'attack',notes:'Adversary-in-the-Middle proxy intercepts MFA session, steals session cookie',tactic:'Credential Access',technique:'T1557'},
+  oauth_consent:{title:'OAuth Consent Grant',icon:'🔑',color:'#f9ab00',iconBg:'#fef7e0',badge:'Persistence',badgeClass:'badge-yellow',type:'attack',notes:'Malicious app requests broad permissions — user grants consent unknowingly',tactic:'Persistence',technique:'T1550.001'},
+  pass_spray:{title:'Password Spray',icon:'💧',color:'#d93025',iconBg:'#fce8e6',badge:'Credential Access',badgeClass:'badge-red',type:'attack',notes:'Low-and-slow spray against Entra ID sign-in targeting common passwords',tactic:'Credential Access',technique:'T1110.003'},
+  token_theft:{title:'Token Theft / Replay',icon:'🪙',color:'#7c4dff',iconBg:'#ede7f6',badge:'Credential Access',badgeClass:'badge-purple',type:'attack',notes:'Stolen access or refresh tokens replayed to authenticate without credentials',tactic:'Credential Access',technique:'T1528'},
+  bec:{title:'BEC / Mail Rules',icon:'📧',color:'#d93025',iconBg:'#fce8e6',badge:'Impact',badgeClass:'badge-red',type:'post',notes:'Inbox rules to forward/hide emails, financial fraud, invoice manipulation',tactic:'Collection / Impact',technique:'T1114.003'},
+  priv_esc:{title:'Privilege Escalation',icon:'⬆️',color:'#e65100',iconBg:'#fff3e0',badge:'Priv Escalation',badgeClass:'badge-orange',type:'post',notes:'Role assignment abuse — escalate to Global Admin or other privileged roles',tactic:'Privilege Escalation',technique:'T1078.004'},
+  persistence:{title:'App Reg. Backdoor',icon:'🔒',color:'#f9ab00',iconBg:'#fef7e0',badge:'Persistence',badgeClass:'badge-yellow',type:'post',notes:'New service principal/app with client credentials for persistent API access',tactic:'Persistence',technique:'T1098.001'},
+  lateral:{title:'Lateral Movement',icon:'↔️',color:'#1a73e8',iconBg:'#e8f0fe',badge:'Lateral Movement',badgeClass:'badge-blue',type:'post',notes:'Pivot to other tenants, partner orgs, or cloud resources via delegated permissions',tactic:'Lateral Movement',technique:'T1550'},
+  exfil:{title:'Data Exfiltration',icon:'📤',color:'#d93025',iconBg:'#fce8e6',badge:'Exfiltration',badgeClass:'badge-red',type:'post',notes:'Exfiltrate via Microsoft Graph API, SharePoint download, or Exchange MAPI',tactic:'Exfiltration',technique:'T1567.004'},
+  user:{title:'User Identity',icon:'👤',color:'#1a73e8',iconBg:'#e8f0fe',badge:'Target',badgeClass:'badge-blue',type:'target',notes:'Standard Entra ID user account',tactic:'',technique:''},
+  admin:{title:'Global Admin',icon:'👑',color:'#d93025',iconBg:'#fce8e6',badge:'High Value',badgeClass:'badge-red',type:'target',notes:'Global Administrator — highest privilege role in Entra ID',tactic:'',technique:''},
+  app_reg:{title:'App Registration',icon:'⚙️',color:'#00796b',iconBg:'#e0f2f1',badge:'Resource',badgeClass:'badge-teal',type:'target',notes:'Entra ID application with delegated or application permissions',tactic:'',technique:''},
+  mailbox:{title:'Exchange Mailbox',icon:'📬',color:'#1a73e8',iconBg:'#e8f0fe',badge:'Target',badgeClass:'badge-blue',type:'target',notes:'Microsoft Exchange Online mailbox',tactic:'',technique:''},
+  sharepoint:{title:'SharePoint / Teams',icon:'🗂️',color:'#00796b',iconBg:'#e0f2f1',badge:'Target',badgeClass:'badge-teal',type:'target',notes:'SharePoint Online or Microsoft Teams collaboration resources',tactic:'',technique:''},
+  mfa:{title:'MFA (FIDO2/TOTP)',icon:'🛡️',color:'#1e8e3e',iconBg:'#e6f4ea',badge:'Control',badgeClass:'badge-green',type:'defense',notes:'Multi-factor authentication — FIDO2 phishing-resistant recommended',tactic:'',technique:''},
+  ca_policy:{title:'Conditional Access',icon:'🔐',color:'#1e8e3e',iconBg:'#e6f4ea',badge:'Control',badgeClass:'badge-green',type:'defense',notes:'Conditional Access policies — device compliance, location, risk-based sign-in',tactic:'',technique:''},
+  defender:{title:'Defender for Identity',icon:'🦅',color:'#1e8e3e',iconBg:'#e6f4ea',badge:'Detection',badgeClass:'badge-green',type:'defense',notes:'Detects suspicious sign-in patterns, impossible travel, token replay',tactic:'',technique:''},
+  decoy:{title:'Honeypot Account',icon:'🍯',color:'#f9ab00',iconBg:'#fef7e0',badge:'Decoy',badgeClass:'badge-yellow',type:'decoy',notes:'Fake high-value account — Defender alerts on any access attempt',tactic:'',technique:''}
+};
+
+// ============================================================
+// VIEW SWITCHING
+// ============================================================
+function setView(v){
+  currentView=v;
+  document.getElementById('btnCanvas').classList.toggle('active',v==='canvas');
+  document.getElementById('btnGraph').classList.toggle('active',v==='graph');
+  document.getElementById('canvasWrap').style.display=v==='canvas'?'':'none';
+  // graph-wrap uses display:flex
+  var gw=document.getElementById('graphWrap');
+  if(v==='graph'){gw.style.display='flex';renderGraph();}
+  else{gw.style.display='none';}
+}
+
+// ============================================================
+// CHAIN TEMPLATES
+// ============================================================
+var chainDefs={
+  device_code_chain:{
+    nodes:[{t:'user',x:60,y:90},{t:'device_code',x:260,y:90},{t:'token_theft',x:470,y:90},{t:'mfa',x:260,y:240},{t:'app_reg',x:470,y:240}],
+    edges:[['n1','n2','Lured to URL','attack'],['n2','n4','MFA check','attack'],['n2','n3','Token issued','attack'],['n3','n5','API access','attack']]
+  },
+  aitm_chain:{
+    nodes:[{t:'phishing',x:50,y:90},{t:'user',x:240,y:90},{t:'aitm',x:240,y:250},{t:'bec',x:440,y:250},{t:'mailbox',x:440,y:90},{t:'defender',x:620,y:170}],
+    edges:[['n1','n2','Clicks link','attack'],['n2','n3','Session proxied','attack'],['n3','n4','Inbox rules','attack'],['n4','n5','Email access','attack'],['n6','n3','Detects AiTM','detection']]
+  },
+  bec_chain:{
+    nodes:[{t:'user',x:60,y:150},{t:'phishing',x:240,y:60},{t:'aitm',x:240,y:240},{t:'bec',x:440,y:150},{t:'exfil',x:630,y:60},{t:'lateral',x:630,y:240},{t:'ca_policy',x:440,y:300}],
+    edges:[['n1','n2','Spear-phish','attack'],['n1','n3','Session stolen','attack'],['n3','n4','Mailbox control','attack'],['n4','n5','Data stolen','attack'],['n4','n6','Pivots tenant','attack'],['n7','n3','Blocks session','mitigation']]
+  },
+  full_attack:{
+    nodes:[
+      {t:'pass_spray',x:40,y:60},{t:'phishing',x:40,y:190},{t:'device_code',x:40,y:320},
+      {t:'user',x:230,y:190},{t:'mfa',x:230,y:320},{t:'aitm',x:230,y:60},
+      {t:'token_theft',x:430,y:120},{t:'oauth_consent',x:430,y:280},
+      {t:'priv_esc',x:630,y:60},{t:'persistence',x:630,y:190},{t:'bec',x:630,y:320},
+      {t:'exfil',x:830,y:190},{t:'ca_policy',x:830,y:60},{t:'defender',x:830,y:320},{t:'decoy',x:430,y:420}
+    ],
+    edges:[
+      ['n1','n4','Credential hit','attack'],['n2','n6','Proxy target','attack'],['n3','n4','No-password auth','attack'],
+      ['n4','n7','Token grabbed','attack'],['n6','n7','Session stolen','attack'],['n4','n8','Illicit consent','attack'],
+      ['n7','n9','Escalate role','attack'],['n9','n10','Backdoor app','attack'],['n9','n11','BEC enabled','attack'],
+      ['n11','n12','Exfil data','attack'],['n13','n9','Blocks escalation','mitigation'],['n14','n6','Detects AiTM','detection'],
+      ['n14','n11','Detects BEC','detection'],['n15','n4','Decoy triggered','decoy']
+    ]
+  }
+};
+
+function loadTemplate(name){
+  var def=chainDefs[name];
+  if(!def)return;
+  clearCanvasSilent();
+  var offsetX=40,offsetY=60;
+  var idMap={};
+  def.nodes.forEach(function(c,i){
+    var id='n'+(++nodeCounter);
+    idMap['n'+(i+1)]=id;
+    nodes.push({
+      id:id,title:templates[c.t].title,icon:templates[c.t].icon,
+      color:templates[c.t].color,iconBg:templates[c.t].iconBg,
+      badge:templates[c.t].badge,badgeClass:templates[c.t].badgeClass,
+      type:templates[c.t].type,notes:templates[c.t].notes||'',
+      tactic:templates[c.t].tactic||'',technique:templates[c.t].technique||'',
+      x:c.x+offsetX,y:c.y+offsetY,
+      isDecoy:templates[c.t].type==='decoy',isMitigated:false,
+      vx:0,vy:0
+    });
+  });
+  def.edges.forEach(function(e){
+    edges.push({id:'e'+(++edgeCounter),from:idMap[e[0]],to:idMap[e[1]],label:e[2],type:e[3]});
+  });
+  renderAll();
+  if(currentView==='graph')renderGraph();
+  updateCounts();
+  toast('Loaded: '+name.replace(/_/g,' '));
+}
+
+// ============================================================
+// NODE MANAGEMENT
+// ============================================================
+function addNodeTemplate(type){
+  var tmpl=templates[type];if(!tmpl)return;
+  var x=80+(nodeCounter%5)*170;
+  var y=80+Math.floor(nodeCounter/5)*150;
+  var id='n'+(++nodeCounter);
+  nodes.push({
+    id:id,title:tmpl.title,icon:tmpl.icon,color:tmpl.color,iconBg:tmpl.iconBg,
+    badge:tmpl.badge,badgeClass:tmpl.badgeClass,type:tmpl.type,notes:tmpl.notes||'',
+    tactic:tmpl.tactic||'',technique:tmpl.technique||'',
+    x:x,y:y,isDecoy:tmpl.type==='decoy',isMitigated:false,vx:0,vy:0
+  });
+  renderAll();
+  if(currentView==='graph')renderGraph();
+  updateCounts();
+  toast('Added: '+tmpl.title);
+}
+
+function updateCounts(){
+  document.getElementById('nodeCount').textContent='Nodes: '+nodes.length;
+  document.getElementById('edgeCount').textContent='Edges: '+edges.length;
+}
+
+// ============================================================
+// CANVAS RENDER
+// ============================================================
+function renderAll(){renderNodes();renderEdges();}
+
+function renderNodes(){
+  var canvas=document.getElementById('canvas');
+  canvas.innerHTML='';
+  nodes.forEach(function(n){
+    var el=document.createElement('div');
+    el.className='node'+(n.isDecoy?' decoy':'')+(n.isMitigated?' mitigated':'');
+    el.id='node-'+n.id;
+    el.style.left=n.x+'px';el.style.top=n.y+'px';
+    el.innerHTML='<div class="node-header"><div class="node-icon" style="background:'+n.iconBg+'">'+n.icon+'</div>'+
+      '<div><div class="node-title">'+esc(n.title)+'</div>'+(n.technique?'<div class="node-tag">'+esc(n.technique)+'</div>':'')+'</div></div>'+
+      '<span class="node-badge '+n.badgeClass+'">'+esc(n.badge)+'</span>';
+    el.addEventListener('mousedown',function(e){onNodeMouseDown(e,n.id);});
+    el.addEventListener('click',function(e){onNodeClick(e,n.id);});
+    canvas.appendChild(el);
+  });
+}
+
+function renderEdges(){
+  var g=document.getElementById('edgesGroup');g.innerHTML='';
+  edges.forEach(function(e){
+    var from=nodes.find(function(n){return n.id===e.from;});
+    var to=nodes.find(function(n){return n.id===e.to;});
+    if(!from||!to)return;
+    var x1=from.x+75,y1=from.y+40,x2=to.x+75,y2=to.y+40;
+    var dx=x2-x1,dy=y2-y1,cx=(x1+x2)/2,cy=(y1+y2)/2;
+    var curve='M'+x1+','+y1+' Q'+(cx+dy*0.28)+','+(cy-dx*0.28)+' '+x2+','+y2;
+    var col=edgeColor(e.type);
+    var markerRef=edgeMarker(e.type);
+    var dash=e.type==='decoy'?'6,4':'';
+    var path=document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('class','edge-path');
+    path.setAttribute('d',curve);path.setAttribute('stroke',col);
+    path.setAttribute('marker-end',markerRef);
+    if(dash)path.setAttribute('stroke-dasharray',dash);
+    path.setAttribute('opacity','0.85');
+    g.appendChild(path);
+    if(e.label){
+      var r=document.createElementNS('http://www.w3.org/2000/svg','rect');
+      r.setAttribute('x',cx-30);r.setAttribute('y',cy-9);r.setAttribute('width',60);r.setAttribute('height',15);
+      r.setAttribute('rx',4);r.setAttribute('class','edge-label-bg');r.setAttribute('opacity','0.9');g.appendChild(r);
+      var t=document.createElementNS('http://www.w3.org/2000/svg','text');
+      t.setAttribute('x',cx);t.setAttribute('y',cy+2);t.setAttribute('text-anchor','middle');
+      t.setAttribute('class','edge-label-text');t.textContent=e.label;g.appendChild(t);
+    }
+  });
+}
+
+function edgeColor(type){return type==='mitigation'?'var(--green)':type==='detection'?'var(--blue)':type==='decoy'?'var(--yellow)':'var(--red)';}
+function edgeMarker(type){return type==='mitigation'?'url(#arr-green)':type==='detection'?'url(#arr-blue)':type==='decoy'?'url(#arr-yellow)':'url(#arr-red)';}
+
+// ============================================================
+// GRAPH VIEW RENDER
+// ============================================================
+var nodeTypeColor={attack:'#ff5252',post:'#ff9100',target:'#64b5f6',defense:'#69f0ae',decoy:'#ffd740'};
+
+function renderGraph(){
+  var svg=document.getElementById('graphSvg');
+  var W=svg.clientWidth||800,H=svg.clientHeight||500;
+  var gEdgesEl=document.getElementById('gEdges');
+  var gNodesEl=document.getElementById('gNodes');
+  gEdgesEl.innerHTML='';gNodesEl.innerHTML='';
+
+  // apply pan/zoom transform
+  gEdgesEl.setAttribute('transform','translate('+gTranslate.x+','+gTranslate.y+') scale('+gScale+')');
+  gNodesEl.setAttribute('transform','translate('+gTranslate.x+','+gTranslate.y+') scale('+gScale+')');
+
+  // EDGES
+  edges.forEach(function(e){
+    var from=nodes.find(function(n){return n.id===e.from;});
+    var to=nodes.find(function(n){return n.id===e.to;});
+    if(!from||!to)return;
+    var gcol=e.type==='mitigation'?'#69f0ae':e.type==='detection'?'#64b5f6':e.type==='decoy'?'#ffd740':'#ff5252';
+    var gmark=e.type==='mitigation'?'url(#garr-green)':e.type==='detection'?'url(#garr-blue)':e.type==='decoy'?'url(#garr-yellow)':'url(#garr-red)';
+    var dash=e.type==='decoy'?'5,3':'';
+
+    // line with slight curve
+    var mx=(from.x+to.x)/2+(to.y-from.y)*0.15;
+    var my=(from.y+to.y)/2-(to.x-from.x)*0.15;
+    var pathEl=document.createElementNS('http://www.w3.org/2000/svg','path');
+    pathEl.setAttribute('d','M'+from.x+','+from.y+' Q'+mx+','+my+' '+to.x+','+to.y);
+    pathEl.setAttribute('fill','none');pathEl.setAttribute('stroke',gcol);
+    pathEl.setAttribute('stroke-width',1.5);pathEl.setAttribute('opacity','0.6');
+    pathEl.setAttribute('marker-end',gmark);
+    if(dash)pathEl.setAttribute('stroke-dasharray',dash);
+    gEdgesEl.appendChild(pathEl);
+
+    // edge label
+    if(e.label){
+      var lx=(from.x+to.x)/2,ly=(from.y+to.y)/2;
+      var ltxt=document.createElementNS('http://www.w3.org/2000/svg','text');
+      ltxt.setAttribute('x',lx);ltxt.setAttribute('y',ly);ltxt.setAttribute('text-anchor','middle');
+      ltxt.setAttribute('fill','rgba(255,255,255,0.4)');ltxt.setAttribute('font-size','10');
+      ltxt.setAttribute('font-family','Roboto,sans-serif');ltxt.textContent=e.label;
+      gEdgesEl.appendChild(ltxt);
+    }
+  });
+
+  // NODES
+  nodes.forEach(function(n){
+    var col=n.isDecoy?'#ffd740':nodeTypeColor[n.type]||'#9e9e9e';
+    var g=document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.setAttribute('transform','translate('+n.x+','+n.y+')');
+    g.setAttribute('cursor','pointer');
+    g.setAttribute('data-id',n.id);
+
+    // glow circle
+    var glow=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    glow.setAttribute('r','28');glow.setAttribute('fill',col);glow.setAttribute('opacity','0.12');
+    glow.setAttribute('filter','url(#glow)');g.appendChild(glow);
+
+    // main circle
+    var circ=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circ.setAttribute('r','20');circ.setAttribute('fill',col);circ.setAttribute('opacity','0.22');
+    circ.setAttribute('stroke',col);circ.setAttribute('stroke-width', n.isMitigated?'3':'1.5');
+    if(n.isDecoy)circ.setAttribute('stroke-dasharray','4,2');
+    if(selectedNode===n.id){circ.setAttribute('stroke-width','3');circ.setAttribute('opacity','0.35');}
+    g.appendChild(circ);
+
+    // icon text
+    var ico=document.createElementNS('http://www.w3.org/2000/svg','text');
+    ico.setAttribute('text-anchor','middle');ico.setAttribute('dominant-baseline','central');
+    ico.setAttribute('font-size','16');ico.textContent=n.icon;g.appendChild(ico);
+
+    // mitigated check
+    if(n.isMitigated){
+      var chk=document.createElementNS('http://www.w3.org/2000/svg','text');
+      chk.setAttribute('x','14');chk.setAttribute('y','-14');chk.setAttribute('text-anchor','middle');
+      chk.setAttribute('dominant-baseline','central');chk.setAttribute('font-size','12');
+      chk.setAttribute('fill','#69f0ae');chk.textContent='✓';g.appendChild(chk);
+    }
+
+    // label
+    var lbl=document.createElementNS('http://www.w3.org/2000/svg','text');
+    lbl.setAttribute('y','32');lbl.setAttribute('text-anchor','middle');lbl.setAttribute('font-size','11');
+    lbl.setAttribute('font-family','Google Sans,Roboto,sans-serif');lbl.setAttribute('fill','rgba(255,255,255,0.85)');
+    lbl.setAttribute('font-weight','500');
+    lbl.textContent=n.title.length>18?n.title.substring(0,16)+'…':n.title;g.appendChild(lbl);
+
+    // technique badge
+    if(n.technique){
+      var tech=document.createElementNS('http://www.w3.org/2000/svg','text');
+      tech.setAttribute('y','44');tech.setAttribute('text-anchor','middle');tech.setAttribute('font-size','9');
+      tech.setAttribute('font-family','Roboto Mono,monospace');tech.setAttribute('fill','rgba(255,255,255,0.35)');
+      tech.textContent=n.technique;g.appendChild(tech);
+    }
+
+    // interaction
+    g.addEventListener('mousedown',function(e){onGraphNodeMouseDown(e,n.id);});
+    g.addEventListener('mouseenter',function(ev){showGraphTooltip(ev,n);});
+    g.addEventListener('mouseleave',function(){hideGraphTooltip();});
+    g.addEventListener('click',function(ev){
+      if(ev.shiftKey){
+        if(!edgeStart){edgeStart=n.id;toast('Shift-click second node to connect');}
+        else if(edgeStart!==n.id){pendingEdge={from:edgeStart,to:n.id};edgeStart=null;openEdgeModal();}
+      } else {selectNode(n.id);}
+    });
+    gNodesEl.appendChild(g);
+  });
+}
+
+// ============================================================
+// GRAPH TOOLTIP
+// ============================================================
+function showGraphTooltip(ev,n){
+  var tt=document.getElementById('graphTooltip');
+  var col=n.isDecoy?'#ffd740':nodeTypeColor[n.type]||'#9e9e9e';
+  tt.innerHTML='<div class="gt-title">'+esc(n.icon)+' '+esc(n.title)+'</div>'+
+    '<span class="gt-badge" style="background:'+col+'22;color:'+col+'">'+esc(n.badge)+'</span>'+
+    (n.notes?'<div class="gt-note">'+esc(n.notes)+'</div>':'')+
+    (n.technique?'<div class="gt-tech">'+esc(n.technique)+' · '+esc(n.tactic)+'</div>':'');
+  var wrap=document.getElementById('graphWrap').getBoundingClientRect();
+  var tx=ev.clientX-wrap.left+14,ty=ev.clientY-wrap.top-10;
+  if(tx+240>wrap.width)tx=ev.clientX-wrap.left-254;
+  tt.style.left=tx+'px';tt.style.top=ty+'px';tt.style.display='block';
+}
+function hideGraphTooltip(){document.getElementById('graphTooltip').style.display='none';}
+
+// ============================================================
+// GRAPH NODE DRAG
+// ============================================================
+function onGraphNodeMouseDown(e,id){
+  e.stopPropagation();
+  if(e.shiftKey)return;
+  var n=nodes.find(function(x){return x.id===id;});
+  gNodeDrag=id;
+  gNodeDragStart={x:e.clientX,y:e.clientY,nx:n.x,ny:n.y};
+}
+document.addEventListener('mousemove',function(e){
+  if(gNodeDrag){
+    var n=nodes.find(function(x){return x.id===gNodeDrag;});
+    if(n){
+      n.x=gNodeDragStart.nx+(e.clientX-gNodeDragStart.x)/gScale;
+      n.y=gNodeDragStart.ny+(e.clientY-gNodeDragStart.y)/gScale;
+      renderGraph();
+    }
+  }
+  if(gDragging){
+    gTranslate.x=gDragTranslate.x+(e.clientX-gDragStart.x);
+    gTranslate.y=gDragTranslate.y+(e.clientY-gDragStart.y);
+    renderGraph();
+  }
+});
+document.addEventListener('mouseup',function(){gNodeDrag=null;gDragging=false;var s=document.getElementById('graphSvg');if(s)s.classList.remove('grabbing');});
+
+// GRAPH PAN
+document.getElementById('graphSvg').addEventListener('mousedown',function(e){
+  if(e.target===this||e.target.tagName==='svg'){
+    gDragging=true;gDragStart={x:e.clientX,y:e.clientY};
+    gDragTranslate={x:gTranslate.x,y:gTranslate.y};
+    this.classList.add('grabbing');
+  }
+});
+
+// GRAPH ZOOM (wheel)
+document.getElementById('graphSvg').addEventListener('wheel',function(e){
+  e.preventDefault();
+  var delta=e.deltaY>0?0.9:1.1;
+  gScale=Math.max(0.2,Math.min(4,gScale*delta));
+  renderGraph();
+},{passive:false});
+
+function graphZoom(factor){gScale=Math.max(0.2,Math.min(4,gScale*factor));renderGraph();}
+function graphReset(){gTranslate={x:0,y:0};gScale=1;renderGraph();}
+
+// ============================================================
+// FORCE-DIRECTED LAYOUT
+// ============================================================
+function runForceLayout(){
+  if(forceTimer)clearInterval(forceTimer);
+  toast('Running force layout…');
+  var W=document.getElementById('graphSvg').clientWidth||800;
+  var H=document.getElementById('graphSvg').clientHeight||500;
+  // init velocities
+  nodes.forEach(function(n){n.vx=0;n.vy=0;});
+  var iter=0,maxIter=120;
+  forceTimer=setInterval(function(){
+    iter++;
+    var k=Math.sqrt((W*H)/Math.max(nodes.length,1))*0.8;
+    nodes.forEach(function(a){
+      var fx=0,fy=0;
+      // repulsion
+      nodes.forEach(function(b){
+        if(a.id===b.id)return;
+        var dx=a.x-b.x,dy=a.y-b.y;
+        var d=Math.sqrt(dx*dx+dy*dy)||1;
+        var f=(k*k)/d;
+        fx+=f*(dx/d);fy+=f*(dy/d);
+      });
+      // attraction
+      edges.forEach(function(e){
+        var other=null;
+        if(e.from===a.id)other=nodes.find(function(n){return n.id===e.to;});
+        else if(e.to===a.id)other=nodes.find(function(n){return n.id===e.from;});
+        if(!other)return;
+        var dx=other.x-a.x,dy=other.y-a.y;
+        var d=Math.sqrt(dx*dx+dy*dy)||1;
+        var f=(d*d)/k;
+        fx+=f*(dx/d);fy+=f*(dy/d);
+      });
+      // center gravity
+      fx+=(W/2-a.x)*0.01;fy+=(H/2-a.y)*0.01;
+      var damp=0.85;
+      a.vx=(a.vx+fx)*damp;a.vy=(a.vy+fy)*damp;
+      var speed=Math.sqrt(a.vx*a.vx+a.vy*a.vy);
+      var maxSpeed=12;
+      if(speed>maxSpeed){a.vx=a.vx/speed*maxSpeed;a.vy=a.vy/speed*maxSpeed;}
+      a.x+=a.vx;a.y+=a.vy;
+      a.x=Math.max(30,Math.min(W-30,a.x));a.y=Math.max(30,Math.min(H-30,a.y));
+    });
+    renderGraph();
+    if(iter>=maxIter){clearInterval(forceTimer);forceTimer=null;toast('Layout complete');}
+  },16);
+}
+
+// ============================================================
+// CANVAS DRAG
+// ============================================================
+var dragState=null;
+function onNodeMouseDown(e,id){
+  if(e.shiftKey)return;e.stopPropagation();
+  var n=nodes.find(function(x){return x.id===id;});
+  dragState={id:id,startX:e.clientX-n.x,startY:e.clientY-n.y};
+  document.getElementById('node-'+id).classList.add('dragging');
+  document.addEventListener('mousemove',onDragMove);
+  document.addEventListener('mouseup',onDragEnd);
+}
+function onDragMove(e){
+  if(!dragState)return;
+  var n=nodes.find(function(x){return x.id===dragState.id;});
+  n.x=Math.max(0,e.clientX-dragState.startX);n.y=Math.max(0,e.clientY-dragState.startY);
+  var el=document.getElementById('node-'+n.id);
+  el.style.left=n.x+'px';el.style.top=n.y+'px';
+  renderEdges();
+}
+function onDragEnd(){
+  if(dragState){var el=document.getElementById('node-'+dragState.id);if(el)el.classList.remove('dragging');}
+  dragState=null;document.removeEventListener('mousemove',onDragMove);document.removeEventListener('mouseup',onDragEnd);
+}
+
+// ============================================================
+// SELECTION & SHIFT+CLICK (canvas)
+// ============================================================
+function onNodeClick(e,id){
+  if(!e.shiftKey){selectNode(id);return;}
+  e.stopPropagation();
+  if(!edgeStart){
+    edgeStart=id;document.getElementById('node-'+id).style.outline='3px solid var(--blue)';
+    toast('Shift-click a second node to connect');
+  } else if(edgeStart!==id){
+    pendingEdge={from:edgeStart,to:id};
+    document.getElementById('node-'+edgeStart).style.outline='';
+    edgeStart=null;openEdgeModal();
+  }
+}
+
+function selectNode(id){
+  if(selectedNode){var o=document.getElementById('node-'+selectedNode);if(o)o.classList.remove('selected');}
+  selectedNode=id;
+  var el=document.getElementById('node-'+id);if(el)el.classList.add('selected');
+  renderNodeProps(id);
+  if(currentView==='graph')renderGraph();
+}
+
+function renderNodeProps(id){
+  var n=nodes.find(function(x){return x.id===id;});if(!n)return;
+  var p=document.getElementById('nodePropsPanel');
+  p.innerHTML='<div class="panel-section-title">'+n.icon+' '+esc(n.title)+'</div>'+
+    '<div class="field-row"><div class="field-label">Label</div><input class="field-input" value="'+esc(n.title)+'" onchange="updateProp(\''+id+'\',\'title\',this.value)"/></div>'+
+    '<div class="field-row"><div class="field-label">Badge</div><input class="field-input" value="'+esc(n.badge)+'" onchange="updateProp(\''+id+'\',\'badge\',this.value)"/></div>'+
+    '<div class="field-row"><div class="field-label">MITRE Technique</div><input class="field-input" value="'+esc(n.technique)+'" onchange="updateProp(\''+id+'\',\'technique\',this.value)"/></div>'+
+    '<div class="field-row"><div class="field-label">Notes</div><textarea class="field-input" rows="3" onchange="updateProp(\''+id+'\',\'notes\',this.value)">'+esc(n.notes)+'</textarea></div>'+
+    '<div class="toggle-row"><span class="toggle-label">Decoy / Honeypot</span><div class="toggle '+(n.isDecoy?'on':'')+'" onclick="toggleNodeProp(\''+id+'\',\'isDecoy\',this)"></div></div>'+
+    '<div class="toggle-row"><span class="toggle-label">Mitigated</span><div class="toggle '+(n.isMitigated?'on':'')+'" onclick="toggleNodeProp(\''+id+'\',\'isMitigated\',this)"></div></div>'+
+    '<div class="flex-row" style="margin-top:8px"><button class="btn btn-danger btn-sm" onclick="deleteNode(\''+id+'\')">Delete Node</button></div>';
+}
+
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
+function updateProp(id,prop,val){var n=nodes.find(function(x){return x.id===id;});if(n){n[prop]=val;renderAll();if(currentView==='graph')renderGraph();}}
+function toggleNodeProp(id,prop,el){el.classList.toggle('on');var n=nodes.find(function(x){return x.id===id;});if(n){n[prop]=el.classList.contains('on');renderAll();if(currentView==='graph')renderGraph();}}
+function deleteNode(id){nodes=nodes.filter(function(n){return n.id!==id;});edges=edges.filter(function(e){return e.from!==id&&e.to!==id;});selectedNode=null;document.getElementById('nodePropsPanel').innerHTML='<div class="text-xs" style="padding:8px 0">Select a node to edit</div>';renderAll();if(currentView==='graph')renderGraph();updateCounts();}
+
+// ============================================================
+// EDGE MODAL
+// ============================================================
+function openEdgeModal(){document.getElementById('edgeModal').classList.add('open');document.getElementById('edgeLabelInput').focus();}
+function closeEdgeModal(){document.getElementById('edgeModal').classList.remove('open');pendingEdge=null;}
+function confirmEdge(){
+  if(!pendingEdge)return;
+  var lbl=document.getElementById('edgeLabelInput').value||'';
+  var typ=document.getElementById('edgeTypeInput').value;
+  edges.push({id:'e'+(++edgeCounter),from:pendingEdge.from,to:pendingEdge.to,label:lbl,type:typ});
+  pendingEdge=null;document.getElementById('edgeLabelInput').value='';
+  closeEdgeModal();renderAll();if(currentView==='graph')renderGraph();updateCounts();
+}
+
+// ============================================================
+// SIMULATION
+// ============================================================
+var scenarios={
+  device_code:[
+    {m:'Attacker visits https://microsoft.com/devicelogin',c:'log-grey'},
+    {m:'Device code generated: ABCD-EFGH',c:'log-yellow'},
+    {m:'Phishing email sent to victim@contoso.com with code',c:'log-red'},
+    {m:'Victim opens link and enters device code',c:'log-yellow'},
+    {m:'[CHECK] CA policy blocking device code flow?',c:'log-blue'},
+    {m:'[RESULT] No CA policy found — device code flow allowed',c:'log-red'},
+    {m:'OAuth token issued to attacker',c:'log-red'},
+    {m:'Attacker accesses Microsoft Graph as victim',c:'log-red'},
+    {m:'Reading mailbox, enumerating groups...',c:'log-red'},
+    {m:'[ALERT] Defender: Suspicious OAuth token activity',c:'log-yellow'}
+  ],
+  aitm:[
+    {m:'AiTM proxy configured at attacker.ngrok.io',c:'log-grey'},
+    {m:'Spear-phishing email delivered to CFO@contoso.com',c:'log-red'},
+    {m:'Victim clicks → redirected through proxy',c:'log-red'},
+    {m:'Proxy forwards credentials to Microsoft',c:'log-yellow'},
+    {m:'MFA prompt triggered — forwarded to victim',c:'log-yellow'},
+    {m:'Victim completes MFA — session cookie captured',c:'log-red'},
+    {m:'Attacker replays session cookie from new IP',c:'log-red'},
+    {m:'[CHECK] Phishing-resistant MFA (FIDO2) enforced?',c:'log-blue'},
+    {m:'[RESULT] Legacy MFA used — AiTM succeeded',c:'log-red'},
+    {m:'Attacker inside O365 as CFO',c:'log-red'},
+    {m:'Creating inbox forwarding rule: all mail → attacker@ext.com',c:'log-red'},
+    {m:'[ALERT] Defender: Impossible travel detected',c:'log-yellow'}
+  ],
+  bec:[
+    {m:'Phase 1: Credential Harvesting',c:'log-blue'},
+    {m:'AiTM phish → session stolen from finance user',c:'log-red'},
+    {m:'Phase 2: Reconnaissance',c:'log-blue'},
+    {m:'Enumerating finance team contacts via Graph API',c:'log-red'},
+    {m:'Identifying pending wire transfers from mailbox',c:'log-red'},
+    {m:'Phase 3: Fraud',c:'log-blue'},
+    {m:'Inbox rule: hide emails from accounts@vendor.com',c:'log-red'},
+    {m:'Spoofed updated banking details sent to finance team',c:'log-red'},
+    {m:'$450,000 wire initiated to attacker account',c:'log-red'},
+    {m:'[ALERT] Defender: Suspicious inbox manipulation',c:'log-yellow'},
+    {m:'[ALERT] MCAS: Mass email forwarding detected',c:'log-yellow'}
+  ],
+  oauth_consent:[
+    {m:'Malicious OAuth app registered: Excel Online Tools',c:'log-grey'},
+    {m:'Consent phishing link sent to victim',c:'log-red'},
+    {m:'Victim clicks → OAuth consent prompt shown',c:'log-yellow'},
+    {m:'Permissions requested: Mail.ReadWrite, Files.Read.All',c:'log-yellow'},
+    {m:'[CHECK] Admin consent policy enforced?',c:'log-blue'},
+    {m:'[RESULT] User consent allowed — victim grants access',c:'log-red'},
+    {m:'Refresh token issued — no MFA bypass needed',c:'log-red'},
+    {m:'Attacker accesses tenant data persistently via Graph',c:'log-red'},
+    {m:'[ALERT] Defender: Unusual application consent',c:'log-yellow'}
+  ],
+  token_theft:[
+    {m:'Primary Refresh Token (PRT) exfiltrated from device',c:'log-red'},
+    {m:'Token extracted from LSASS / browser credential cache',c:'log-red'},
+    {m:'[CHECK] Token protection (binding) enabled?',c:'log-blue'},
+    {m:'[RESULT] Token binding not enforced',c:'log-red'},
+    {m:'PRT replayed from attacker-controlled device',c:'log-red'},
+    {m:'New access token minted without MFA challenge',c:'log-red'},
+    {m:'Accessing SharePoint, Teams, Exchange as user',c:'log-red'},
+    {m:'[ALERT] Sign-in from new device fingerprint',c:'log-yellow'}
+  ],
+  full:[
+    {m:'=== PHASE 1: Initial Access ===',c:'log-blue'},
+    {m:'Password spray: 3000 attempts, 2 valid credentials found',c:'log-red'},
+    {m:'Device code phish sent to IT admin',c:'log-red'},
+    {m:'AiTM proxy active for CFO phishing campaign',c:'log-red'},
+    {m:'=== PHASE 2: Authentication Bypass ===',c:'log-blue'},
+    {m:'Device code flow: Token obtained for IT admin',c:'log-red'},
+    {m:'AiTM: Session cookie stolen from CFO',c:'log-red'},
+    {m:'=== PHASE 3: Post-Compromise ===',c:'log-blue'},
+    {m:'Privilege escalation: IT admin → Global Admin role',c:'log-red'},
+    {m:'New app registration with client secret created',c:'log-red'},
+    {m:'BEC: CFO mailbox rules deployed',c:'log-red'},
+    {m:'Exfiltrating SharePoint via Graph API',c:'log-red'},
+    {m:'=== DETECTION & RESPONSE ===',c:'log-yellow'},
+    {m:'[ALERT] Impossible travel for CFO account',c:'log-yellow'},
+    {m:'[DECOY] Honeypot admin account accessed — ALERT FIRED!',c:'log-green'},
+    {m:'[ALERT] Global Admin role assigned outside PIM',c:'log-yellow'}
+  ]
+};
+
+function runSimulation(){
+  if(simRunning)return;
+  var scenario=document.getElementById('scenarioSelect').value;
+  var lines=(scenarios[scenario]||[]).slice();
+  var caOn=document.getElementById('toggleCA').classList.contains('on');
+  var defOn=document.getElementById('toggleDefender').classList.contains('on');
+  var mfaOn=document.getElementById('toggleMFA').classList.contains('on');
+  if(caOn){lines=lines.map(function(l){
+    if(l.m.includes('No CA policy found'))return{m:'[RESULT] CA policy BLOCKS this attack path ✓',c:'log-green'};
+    if(l.m.includes('Token binding not enforced'))return{m:'[RESULT] Token protection enforced — replay blocked ✓',c:'log-green'};
+    return l;
+  });}
+  if(mfaOn&&scenario==='aitm'){lines=lines.map(function(l){
+    if(l.m.includes('Legacy MFA used'))return{m:'[RESULT] FIDO2 enforced — AiTM proxy defeated ✓',c:'log-green'};
+    return l;
+  });}
+  if(!defOn)lines=lines.filter(function(l){return!l.m.includes('[ALERT]')&&!l.m.includes('[DECOY]');});
+
+  simRunning=true;simStepIndex=0;simScenarioLines=lines;
+  document.getElementById('statusDot').classList.add('running');
+  document.getElementById('simStep').textContent='Simulation: Running';
+  document.getElementById('simLog').innerHTML='';
+  var speed=parseInt(document.getElementById('simSpeed').value)||1400;
+  var i=0;
+  simInterval=setInterval(function(){
+    if(i>=lines.length){
+      clearInterval(simInterval);simRunning=false;
+      document.getElementById('statusDot').classList.remove('running');
+      document.getElementById('simStep').textContent='Simulation: Complete';
+      appendLog('<span class="log-grey">// Complete</span>');
+      return;
+    }
+    appendLog('<span class="'+lines[i].c+'">'+esc(lines[i].m)+'</span>');
+    document.getElementById('simStep').textContent='Step '+(i+1)+'/'+lines.length;
+    i++;
+  },speed);
+}
+var simStepIndex=0,simScenarioLines=[];
+function appendLog(html){var l=document.getElementById('simLog');l.innerHTML+=html+'\n';l.scrollTop=l.scrollHeight;}
+function resetSim(){clearInterval(simInterval);simRunning=false;document.getElementById('statusDot').classList.remove('running');document.getElementById('simStep').textContent='Simulation: Idle';document.getElementById('simLog').innerHTML='<span class="log-grey">// Log will appear here</span>';}
+function toggleSim(){if(simRunning){resetSim();document.getElementById('simChip').textContent='▶ Simulation';}else{switchTab('sim-tab');runSimulation();document.getElementById('simChip').textContent='⏹ Stop';}}
+
+// ============================================================
+// MITIGATIONS
+// ============================================================
+function applyMitigation(key){
+  if(appliedMitigations.has(key)){toast('Already applied');return;}
+  appliedMitigations.add(key);
+  nodes.forEach(function(n){if(n.type==='defense')n.isMitigated=true;});
+  renderAll();if(currentView==='graph')renderGraph();
+  toast('✓ Applied: '+key.replace(/_/g,' '),'green');
+}
+
+// ============================================================
+// TABS
+// ============================================================
+function switchTab(id){
+  var map={'node-tab':'Node','sim-tab':'Simulation','mitigations-tab':'Mitigations'};
+  document.querySelectorAll('.tab-content').forEach(function(c){c.classList.remove('active');});
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');if(t.textContent.trim()===map[id])t.classList.add('active');});
+  var el=document.getElementById(id);if(el)el.classList.add('active');
+}
+
+// ============================================================
+// IMPORT / EXPORT
+// ============================================================
+function exportModel(){
+  var data=JSON.stringify({nodes:nodes,edges:edges},null,2);
+  var blob=new Blob([data],{type:'application/json'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');a.href=url;a.download='entra-attack-model.json';a.click();URL.revokeObjectURL(url);
+  toast('Model exported');
+}
+function importModel(){document.getElementById('importModal').classList.add('open');}
+function closeImportModal(){document.getElementById('importModal').classList.remove('open');}
+function doImport(){
+  var txt=document.getElementById('importJson').value.trim();
+  try{
+    var data=JSON.parse(txt);if(!data.nodes)throw new Error('Invalid format');
+    nodes=data.nodes;edges=data.edges||[];
+    nodeCounter=nodes.reduce(function(m,n){return Math.max(m,parseInt(n.id.replace('n',''))||0);},0);
+    edgeCounter=edges.reduce(function(m,e){return Math.max(m,parseInt(e.id.replace('e',''))||0);},0);
+    nodes.forEach(function(n){if(!n.vx)n.vx=0;if(!n.vy)n.vy=0;});
+    renderAll();if(currentView==='graph')renderGraph();updateCounts();
+    closeImportModal();toast('Imported: '+nodes.length+' nodes');
+  }catch(err){toast('Error: '+err.message,'red');}
+}
+
+// ============================================================
+// CLEAR / FIT / MODALS
+// ============================================================
+function openClearModal(){document.getElementById('clearModal').classList.add('open');}
+function closeClearModal(){document.getElementById('clearModal').classList.remove('open');}
+function clearCanvasSilent(){nodes=[];edges=[];selectedNode=null;nodeCounter=0;edgeCounter=0;renderAll();if(currentView==='graph')renderGraph();updateCounts();}
+function clearCanvas(){clearCanvasSilent();closeClearModal();toast('Canvas cleared');}
+function fitView(){toast('View fitted');}
+function openHelpModal(){document.getElementById('helpModal').classList.add('open');}
+function closeHelpModal(){document.getElementById('helpModal').classList.remove('open');}
+document.querySelectorAll('.modal-overlay').forEach(function(o){o.addEventListener('click',function(e){if(e.target===o)o.classList.remove('open');});});
+
+// ============================================================
+// SIDEBAR ACTIVE
+// ============================================================
+function setSidebarActive(el){document.querySelectorAll('.sidebar-item').forEach(function(i){i.classList.remove('active');});el.classList.add('active');}
+
+// ============================================================
+// TOAST
+// ============================================================
+function toast(msg,type){
+  var c=document.getElementById('toastContainer');
+  var t=document.createElement('div');t.className='toast';
+  if(type==='green')t.style.background='var(--green)';
+  if(type==='red')t.style.background='var(--red)';
+  t.textContent=msg;c.appendChild(t);
+  setTimeout(function(){t.remove();},2800);
+}
+
+// ============================================================
+// INIT
+// ============================================================
+window.addEventListener('load',function(){loadTemplate('full_attack');});
+</script>
+</body>
+</html>
